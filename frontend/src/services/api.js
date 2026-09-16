@@ -85,6 +85,10 @@ export const grievanceService = {
     const response = await api.post(`/grievances/${id}/analyze`);
     return response.data;
   },
+  generateResolutionRecommendation: async (id) => {
+    const response = await api.post(`/grievances/${id}/resolution-recommendation`);
+    return response.data;
+  },
 };
 
 // Admin API Service

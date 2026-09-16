@@ -24,6 +24,7 @@ import PriorityBadge from '../components/common/PriorityBadge';
 import StatusTimeline from '../components/common/StatusTimeline';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
+import AIResolutionRecommendation from '../components/common/AIResolutionRecommendation';
 
 const OfficerGrievanceDetailPage = () => {
   const { id } = useParams();
@@ -385,6 +386,16 @@ const OfficerGrievanceDetailPage = () => {
             </div>
           </div>
         )}
+
+        <div style={{ marginBottom: '2rem' }}>
+          <AIResolutionRecommendation
+            grievance={grievance}
+            onUseAsNote={(note) => {
+              setProgressNote((current) => (current ? `${current}\n${note}` : note));
+              setFeedback({ type: 'info', message: 'AI actions copied into the progress note. Review before submitting.' });
+            }}
+          />
+        </div>
 
         {/* Resolution Section if already resolved */}
         {grievance.status === 'Resolved' && grievance.resolution && (

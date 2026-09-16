@@ -111,6 +111,58 @@ const validateAIResponse = (parsed, fallback = {}) => {
   };
 };
 
+const validateResolutionRecommendation = (parsed) => {
+  if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.recommendedActions)) {
+    return null;
+  }
+
+  const recommendedActions = parsed.recommendedActions
+    .filter((action) => typeof action === 'string' && action.trim())
+    .map((action) => action.trim())
+    .slice(0, 5);
+
+  if (
+    recommendedActions.length === 0 ||
+    typeof parsed.recommendedDepartment !== 'string' ||
+    !parsed.recommendedDepartment.trim() ||
+    typeof parsed.urgencyReason !== 'string' ||
+    !parsed.urgencyReason.trim() ||
+    typeof parsed.citizenCommunication !== 'string' ||
+    !parsed.citizenCommunication.trim()
+  ) {
+    return null;
+  }
+
+  return {
+    recommendedActions,
+    recommendedDepartment: parsed.recommendedDepartment.trim(),
+    urgencyReason: parsed.urgencyReason.trim(),
+    citizenCommunication: parsed.citizenCommunication.trim(),
+  };
+};
+
+const fallbackResolutionRecommendation = ({
+  category = 'Other',
+  department = 'General Administration',
+  priority = 'Medium',
+  status = 'Submitted',
+  resolution = {},
+}) => ({
+  recommendedActions: [
+    `Review the reported issue on site and document the current condition.`,
+    `Coordinate the ${department} field team to complete the required corrective work.`,
+    `Record the work completed and verify the outcome before updating the grievance status.`,
+  ],
+  recommendedDepartment: department,
+  urgencyReason:
+    priority === 'Critical' || priority === 'High'
+      ? `${priority} priority ${category.toLowerCase()} grievance in ${status} status requires prompt field attention to reduce public impact.`
+      : `The grievance is currently ${status}; a documented inspection and coordinated maintenance response will support a timely resolution.`,
+  citizenCommunication: resolution?.actionTaken
+    ? `Your grievance has a recorded resolution action: ${resolution.actionTaken}. The department will continue to monitor the outcome.`
+    : 'Your grievance has been reviewed and assigned for inspection. We will update you after the field team confirms the corrective action.',
+});
+
 /**
  * Fallback Rule-Based NLP Classifier (Zero external dependency resilience)
  */
@@ -406,9 +458,75 @@ Return a valid JSON object matching this schema exactly:
   }
 };
 
+const generateResolutionRecommendation = async ({
+  title = '',
+  description = '',
+  category = 'Other',
+  department = 'General Administration',
+  priority = 'Medium',
+  location = {},
+  status = 'Submitted',
+  statusHistory = [],
+  resolution = {},
+}) => {
+  const prompt = `
+You are CivicAI, an advisory public grievance resolution assistant.
+Generate a practical resolution recommendation for an administrator or field officer.
+This is guidance only. Do not claim that any action has already been taken.
+
+Grievance title: "${title}"
+Description: "${description}"
+Category: "${category}"
+Department: "${department}"
+Priority: "${priority}"
+Location/address: "${location?.address || 'Not provided'}"
+Current status: "${status}"
+Status history: ${JSON.stringify(statusHistory.map((entry) => ({
+  status: entry.status,
+  comment: entry.comment,
+})))}
+Previous resolution: ${JSON.stringify(resolution || {})}
+
+Return only valid JSON matching this schema exactly:
+{
+  "recommendedActions": ["Action 1", "Action 2", "Action 3"],
+  "recommendedDepartment": "Department name",
+  "urgencyReason": "Why this recommendation is appropriate",
+  "citizenCommunication": "Suggested message to the citizen"
+}
+`;
+
+  try {
+    const rawText = await callLLMAPI(prompt);
+    const parsed = extractJSON(rawText);
+    const validated = validateResolutionRecommendation(parsed);
+
+    if (validated) {
+      return { ...validated, source: 'llm', generatedAt: new Date() };
+    }
+  } catch (error) {
+    console.warn('[CivicAI Service] Resolution recommendation API unavailable:', error.message);
+  }
+
+  return {
+    ...fallbackResolutionRecommendation({
+      category,
+      department,
+      priority,
+      status,
+      resolution,
+    }),
+    source: 'fallback',
+    generatedAt: new Date(),
+  };
+};
+
 module.exports = {
   analyzeGrievance,
+  generateResolutionRecommendation,
   validateAIResponse,
+  validateResolutionRecommendation,
+  fallbackResolutionRecommendation,
   ruleBasedAnalysis,
   ALLOWED_CATEGORIES,
   ALLOWED_DEPARTMENTS,

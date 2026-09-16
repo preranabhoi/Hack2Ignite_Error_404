@@ -1,6 +1,6 @@
 const { Grievance, CATEGORY_DEPARTMENT_MAP } = require('../models/Grievance');
 const User = require('../models/User');
-const { analyzeGrievance } = require('../services/aiService');
+const { analyzeGrievance, generateResolutionRecommendation } = require('../services/aiService');
 
 // @desc    Create a new grievance & run lightweight AI analysis
 // @route   POST /api/grievances
@@ -143,6 +143,51 @@ const reanalyzeGrievance = async (req, res, next) => {
       message: 'AI analysis updated successfully',
       aiAnalysis: updated.aiAnalysis,
       grievance: updated,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Generate an advisory AI resolution recommendation
+// @route   POST /api/grievances/:id/resolution-recommendation
+// @access  Private (Admin / assigned Officer)
+const generateGrievanceResolutionRecommendation = async (req, res, next) => {
+  try {
+    const grievance = await Grievance.findById(req.params.id);
+
+    if (!grievance) {
+      return res.status(404).json({ success: false, message: 'Grievance not found' });
+    }
+
+    const isAssignedOfficer =
+      req.user.role === 'officer' &&
+      grievance.assignedOfficer &&
+      grievance.assignedOfficer.toString() === req.user._id.toString();
+
+    if (req.user.role !== 'admin' && !isAssignedOfficer) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only an administrator or the assigned officer can generate a recommendation.',
+      });
+    }
+
+    const recommendation = await generateResolutionRecommendation({
+      title: grievance.title,
+      description: grievance.description,
+      category: grievance.category,
+      department: grievance.department,
+      priority: grievance.priority,
+      location: grievance.location,
+      status: grievance.status,
+      statusHistory: grievance.statusHistory,
+      resolution: grievance.resolution,
+    });
+
+    res.json({
+      success: true,
+      message: 'AI resolution recommendation generated. Review before taking action.',
+      recommendation,
     });
   } catch (error) {
     next(error);
@@ -385,4 +430,5 @@ module.exports = {
   updateGrievance,
   deleteGrievance,
   reanalyzeGrievance,
+  generateGrievanceResolutionRecommendation,
 };

@@ -15,7 +15,7 @@ import MyGrievancesPage from './pages/MyGrievancesPage';
 import GrievanceDetailPage from './pages/GrievanceDetailPage';
 import AdminDashboard from './pages/AdminDashboard';
 import OfficerDashboard from './pages/OfficerDashboard';
-import OfficerGrievanceDetailPage from './pages/OfficerGrievanceDetailPage';
+import OfficerGrievanceDetailPage from './pages/OfficerGrievanceDetail';
 
 function App() {
   return (

@@ -7,6 +7,7 @@ const {
   updateGrievance,
   deleteGrievance,
   reanalyzeGrievance,
+  generateGrievanceResolutionRecommendation,
 } = require('../controllers/grievanceController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -15,6 +16,12 @@ router.post('/', protect, authorize('citizen'), createGrievance);
 router.get('/my', protect, authorize('citizen'), getMyGrievances);
 router.get('/:id', protect, getGrievanceById);
 router.post('/:id/analyze', protect, reanalyzeGrievance);
+router.post(
+  '/:id/resolution-recommendation',
+  protect,
+  authorize('admin', 'officer'),
+  generateGrievanceResolutionRecommendation
+);
 router.patch('/:id', protect, authorize('citizen'), updateGrievance);
 router.delete('/:id', protect, authorize('citizen'), deleteGrievance);
 

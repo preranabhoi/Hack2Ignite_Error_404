@@ -20,6 +20,7 @@ import {
 import StatusBadge from '../common/StatusBadge';
 import PriorityBadge from '../common/PriorityBadge';
 import StatusTimeline from '../common/StatusTimeline';
+import AIResolutionRecommendation from '../common/AIResolutionRecommendation';
 import { adminService } from '../../services/api';
 
 const STATUS_LIST = [
@@ -412,6 +413,15 @@ const AdminReviewModal = ({ grievance, onClose, onUpdated }) => {
                 </div>
               </div>
             )}
+
+            <AIResolutionRecommendation
+              grievance={grievance}
+              onUseAsNote={(note) => {
+                setAssignmentNotes((current) => (current ? `${current}\n${note}` : note));
+                setActiveTab('assign');
+                setFeedback({ type: 'info', message: 'AI actions copied into assignment notes. Review before saving.' });
+              }}
+            />
           </div>
 
           {/* Right Column: Admin Action Tabs & Forms */}
