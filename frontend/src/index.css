@@ -127,6 +127,39 @@ a:hover {
   padding: 2rem 0;
 }
 
+.page-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.leaflet-container {
+  font-family: var(--font-sans);
+  z-index: 0;
+}
+
+@media (max-width: 640px) {
+  .app-container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .page-heading-row .btn {
+    width: 100%;
+  }
+}
+
 /* Glassmorphism Card Style */
 .card {
   background: var(--bg-surface);

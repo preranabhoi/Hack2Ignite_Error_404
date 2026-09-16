@@ -26,6 +26,7 @@ import PriorityBadge from '../components/common/PriorityBadge';
 import StatusTimeline from '../components/common/StatusTimeline';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
+import GrievanceMap from '../components/common/GrievanceMap';
 
 const CATEGORIES = [
   { id: 'Roads', label: 'Roads & Potholes' },
@@ -569,6 +570,10 @@ const GrievanceDetailPage = () => {
                 </a>
               </div>
             )}
+
+            <div style={{ marginTop: '0.9rem' }}>
+              <GrievanceMap grievances={[grievance]} height="240px" />
+            </div>
           </div>
         </div>
 

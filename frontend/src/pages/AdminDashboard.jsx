@@ -15,6 +15,8 @@ import AdminGrievanceTable from '../components/admin/AdminGrievanceTable';
 import AdminReviewModal from '../components/admin/AdminReviewModal';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
+import GrievanceMap from '../components/common/GrievanceMap';
+import { Link } from 'react-router-dom';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({});
@@ -155,6 +157,18 @@ const AdminDashboard = () => {
 
       {/* 2. Visual Analytics & Charts */}
       <AdminCharts stats={stats} />
+
+      {/* Location-based overview */}
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
+          <div>
+            <h2 style={{ fontSize: '1.15rem' }}>Location-Based Overview</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Current filtered grievance locations</p>
+          </div>
+          <Link to="/admin/map" className="btn btn-secondary btn-sm">Open Grievance Map</Link>
+        </div>
+        <GrievanceMap grievances={grievances} height="300px" compact />
+      </div>
 
       {/* 3. Grievance Management Records Table */}
       <AdminGrievanceTable

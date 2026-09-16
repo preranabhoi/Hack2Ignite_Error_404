@@ -16,6 +16,7 @@ import GrievanceDetailPage from './pages/GrievanceDetailPage';
 import AdminDashboard from './pages/AdminDashboard';
 import OfficerDashboard from './pages/OfficerDashboard';
 import OfficerGrievanceDetailPage from './pages/OfficerGrievanceDetail';
+import AdminMapPage from './pages/AdminMapPage';
 
 function App() {
   return (
@@ -88,6 +89,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/map"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminMapPage />
                   </ProtectedRoute>
                 }
               />
