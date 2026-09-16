@@ -170,7 +170,15 @@ const LandingPage = () => {
                   style={{ backgroundColor: '#2563eb', color: 'white', border: '1px solid #60a5fa' }}
                 >
                   <Users size={14} />
-                  <span>Demo Citizen</span>
+                  <span>Demo Citizen (Aarav)</span>
+                </button>
+                <button
+                  onClick={() => handleQuickDemo('admin')}
+                  className="btn btn-sm"
+                  style={{ backgroundColor: '#7c3aed', color: 'white', border: '1px solid #a78bfa' }}
+                >
+                  <ShieldCheck size={14} />
+                  <span>Demo Admin (Dr. Vikram)</span>
                 </button>
               </div>
             </div>

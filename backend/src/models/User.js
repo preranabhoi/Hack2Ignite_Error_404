@@ -50,6 +50,16 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    employeeId: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    availabilityStatus: {
+      type: String,
+      enum: ['active', 'on-leave', 'busy'],
+      default: 'active',
+    },
     phone: {
       type: String,
       trim: true,

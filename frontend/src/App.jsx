@@ -13,6 +13,7 @@ import CitizenDashboard from './pages/CitizenDashboard';
 import CreateGrievancePage from './pages/CreateGrievancePage';
 import MyGrievancesPage from './pages/MyGrievancesPage';
 import GrievanceDetailPage from './pages/GrievanceDetailPage';
+import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
   return (
@@ -57,6 +58,16 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <GrievanceDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Protected Admin Routes */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminDashboard />
                   </ProtectedRoute>
                 }
               />

@@ -33,7 +33,11 @@ const LoginPage = () => {
     try {
       const res = await login(email, password);
       if (res.success) {
-        navigate(redirectPath);
+        if (res.user.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate(redirectPath === '/admin' ? '/dashboard' : redirectPath);
+        }
       }
     } catch (err) {
       setError(
@@ -50,7 +54,11 @@ const LoginPage = () => {
     try {
       const res = await demoLogin(roleType);
       if (res.success) {
-        navigate(redirectPath);
+        if (roleType === 'admin' || res.user?.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Demo login failed');
@@ -227,6 +235,29 @@ const LoginPage = () => {
                 <div style={{ fontWeight: 600 }}>Login as Citizen (Aarav Sharma)</div>
                 <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
                   citizen@civicai.gov
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDemo('admin')}
+              disabled={isSubmitting}
+              className="btn btn-secondary btn-sm"
+              style={{
+                justifyContent: 'flex-start',
+                padding: '0.6rem 0.85rem',
+                borderColor: '#c4b5fd',
+                backgroundColor: '#f5f3ff',
+              }}
+            >
+              <ShieldCheck size={16} color="#7c3aed" />
+              <div style={{ textAlign: 'left', lineHeight: '1.2' }}>
+                <div style={{ fontWeight: 600, color: '#6d28d9' }}>
+                  Login as Administrator (Dr. Vikramaditya)
+                </div>
+                <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
+                  admin@civicai.gov
                 </div>
               </div>
             </button>

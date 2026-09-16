@@ -54,34 +54,52 @@ const Navbar = () => {
           </div>
         </Link>
 
-        {/* Navigation Links for Authenticated Citizen */}
-        {isAuthenticated && role === 'citizen' && (
+        {/* Navigation Links for Authenticated Users */}
+        {isAuthenticated && (
           <nav>
             <ul className="nav-links">
-              <li>
-                <NavLink
-                  to="/dashboard"
-                  className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-                >
-                  <LayoutDashboard size={16} />
-                  <span>Dashboard</span>
-                </NavLink>
-              </li>
-              <li>
-                <NavLink
-                  to="/grievances"
-                  className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-                >
-                  <FileText size={16} />
-                  <span>My Grievances</span>
-                </NavLink>
-              </li>
-              <li>
-                <Link to="/grievances/new" className="btn btn-primary btn-sm">
-                  <PlusCircle size={16} />
-                  <span>File Grievance</span>
-                </Link>
-              </li>
+              {role === 'citizen' && (
+                <>
+                  <li>
+                    <NavLink
+                      to="/dashboard"
+                      className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                    >
+                      <LayoutDashboard size={16} />
+                      <span>Dashboard</span>
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink
+                      to="/grievances"
+                      className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                    >
+                      <FileText size={16} />
+                      <span>My Grievances</span>
+                    </NavLink>
+                  </li>
+                  <li>
+                    <Link to="/grievances/new" className="btn btn-primary btn-sm">
+                      <PlusCircle size={16} />
+                      <span>File Grievance</span>
+                    </Link>
+                  </li>
+                </>
+              )}
+
+              {role === 'admin' && (
+                <>
+                  <li>
+                    <NavLink
+                      to="/admin"
+                      className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                    >
+                      <LayoutDashboard size={16} />
+                      <span>Admin Oversight</span>
+                    </NavLink>
+                  </li>
+                </>
+              )}
             </ul>
           </nav>
         )}

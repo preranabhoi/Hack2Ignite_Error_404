@@ -87,4 +87,46 @@ export const grievanceService = {
   },
 };
 
+// Admin API Service
+export const adminService = {
+  getStats: async () => {
+    const response = await api.get('/admin/stats');
+    return response.data;
+  },
+  getGrievances: async (params = {}) => {
+    const response = await api.get('/admin/grievances', { params });
+    return response.data;
+  },
+  getOfficers: async (department) => {
+    const params = department ? { department } : {};
+    const response = await api.get('/admin/officers', { params });
+    return response.data;
+  },
+  assignOfficer: async (id, { officerId, notes }) => {
+    const response = await api.patch(`/admin/grievances/${id}/assign`, {
+      officerId,
+      notes,
+    });
+    return response.data;
+  },
+  updateStatus: async (id, { status, comment, remarks, actionTaken }) => {
+    const response = await api.patch(`/admin/grievances/${id}/status`, {
+      status,
+      comment,
+      remarks,
+      actionTaken,
+    });
+    return response.data;
+  },
+  overrideGrievance: async (id, { category, department, priority, overrideReason }) => {
+    const response = await api.patch(`/admin/grievances/${id}/override`, {
+      category,
+      department,
+      priority,
+      overrideReason,
+    });
+    return response.data;
+  },
+};
+
 export default api;
