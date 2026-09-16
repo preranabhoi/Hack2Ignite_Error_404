@@ -336,6 +336,181 @@ const GrievanceDetailPage = () => {
           </p>
         </div>
 
+        {/* AI Analysis Layer Card */}
+        {grievance.aiAnalysis && (
+          <div
+            style={{
+              background: 'linear-gradient(145deg, #f8fafc 0%, #eff6ff 50%, #f5f3ff 100%)',
+              border: '1px solid #c7d2fe',
+              borderRadius: 'var(--radius-lg)',
+              padding: '1.5rem',
+              marginBottom: '2rem',
+              boxShadow: '0 2px 8px rgba(99, 102, 241, 0.08)',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1.25rem',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <div
+                  style={{
+                    width: '2rem',
+                    height: '2rem',
+                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: 'var(--accent)',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Sparkles size={16} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--text-main)' }}>
+                    AI Analysis & Smart Routing
+                  </h3>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Lightweight LLM Assessment Layer
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: grievance.aiAnalysis.status === 'completed' ? '#4338ca' : '#991b1b',
+                    background: grievance.aiAnalysis.status === 'completed' ? '#e0e7ff' : '#fee2e2',
+                    padding: '0.2rem 0.6rem',
+                    borderRadius: 'var(--radius-full)',
+                    border: '1px solid #c7d2fe',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  {grievance.aiAnalysis.status === 'completed' ? '✨ AI Assisted' : '⚠️ AI Fallback'}
+                </span>
+
+                {grievance.aiAnalysis.confidenceScore && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    Confidence: {(grievance.aiAnalysis.confidenceScore * 100).toFixed(0)}%
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* AI Core Attributes Grid */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+                gap: '1rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.85)',
+                padding: '1rem',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid #e0e7ff',
+                marginBottom: '1.25rem',
+              }}
+            >
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>
+                  AI Classified Category
+                </span>
+                <strong style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                  {grievance.aiAnalysis.category || grievance.category}
+                </strong>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>
+                  Recommended Department
+                </span>
+                <strong style={{ fontSize: '0.9rem', color: 'var(--primary)' }}>
+                  {grievance.aiAnalysis.department || grievance.department}
+                </strong>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>
+                  Assessed Urgency Level
+                </span>
+                <div style={{ marginTop: '0.2rem' }}>
+                  <PriorityBadge
+                    priority={grievance.aiAnalysis.priority || grievance.priority}
+                    size="sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>
+                  Analyzed On
+                </span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>
+                  {grievance.aiAnalysis.analyzedAt ? formatDate(grievance.aiAnalysis.analyzedAt) : 'On submission'}
+                </span>
+              </div>
+            </div>
+
+            {/* AI Summary */}
+            <div style={{ marginBottom: '1rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#3730a3', display: 'block', marginBottom: '0.25rem' }}>
+                Executive AI Summary
+              </span>
+              <p
+                style={{
+                  fontSize: '0.9rem',
+                  color: 'var(--text-main)',
+                  lineHeight: '1.6',
+                  backgroundColor: 'rgba(255,255,255,0.7)',
+                  padding: '0.75rem 1rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid #e0e7ff',
+                }}
+              >
+                {grievance.aiAnalysis.summary}
+              </p>
+            </div>
+
+            {/* AI Suggested Action */}
+            <div style={{ marginBottom: '0.75rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f766e', display: 'block', marginBottom: '0.25rem' }}>
+                Recommended Field Action
+              </span>
+              <p
+                style={{
+                  fontSize: '0.9rem',
+                  color: '#134e4a',
+                  lineHeight: '1.6',
+                  backgroundColor: '#f0fdfa',
+                  padding: '0.75rem 1rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid #99f6e4',
+                }}
+              >
+                {grievance.aiAnalysis.suggestedAction}
+              </p>
+            </div>
+
+            {/* Disclaimer */}
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.75rem', fontStyle: 'italic' }}>
+              ℹ️ AI analysis provides advisory routing suggestions. Municipal officers verify all details and retain full administrative override authority.
+            </div>
+          </div>
+        )}
+
         {/* Location & Map info */}
         <div
           style={{

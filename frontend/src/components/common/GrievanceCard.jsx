@@ -71,6 +71,21 @@ const GrievanceCard = ({ grievance }) => {
             >
               {grievance.category}
             </span>
+            {grievance.aiAnalysis?.status === 'completed' && (
+              <span
+                style={{
+                  fontSize: '0.7rem',
+                  color: 'var(--accent)',
+                  background: 'var(--accent-light)',
+                  padding: '0.15rem 0.45rem',
+                  borderRadius: 'var(--radius-sm)',
+                  fontWeight: 700,
+                  border: '1px solid #c7d2fe',
+                }}
+              >
+                ✨ AI Assisted
+              </span>
+            )}
           </div>
           <PriorityBadge priority={grievance.priority} size="sm" />
         </div>

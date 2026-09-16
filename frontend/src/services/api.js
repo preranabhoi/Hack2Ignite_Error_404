@@ -81,6 +81,10 @@ export const grievanceService = {
     const response = await api.delete(`/grievances/${id}`);
     return response.data;
   },
+  reanalyze: async (id) => {
+    const response = await api.post(`/grievances/${id}/analyze`);
+    return response.data;
+  },
 };
 
 export default api;

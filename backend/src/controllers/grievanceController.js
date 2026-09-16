@@ -1,7 +1,8 @@
 const { Grievance, CATEGORY_DEPARTMENT_MAP } = require('../models/Grievance');
 const User = require('../models/User');
+const { analyzeGrievance } = require('../services/aiService');
 
-// @desc    Create a new grievance
+// @desc    Create a new grievance & run lightweight AI analysis
 // @route   POST /api/grievances
 // @access  Private (Citizen)
 const createGrievance = async (req, res, next) => {
@@ -64,13 +65,84 @@ const createGrievance = async (req, res, next) => {
       ],
     });
 
+    // 1. Initial save
     const savedGrievance = await grievance.save();
+
+    // 2. Perform lightweight AI analysis
+    try {
+      const aiResult = await analyzeGrievance({
+        title: savedGrievance.title,
+        description: savedGrievance.description,
+        category: savedGrievance.category,
+        priority: savedGrievance.priority,
+        location: savedGrievance.location,
+      });
+
+      savedGrievance.aiAnalysis = aiResult;
+      await savedGrievance.save();
+    } catch (aiErr) {
+      console.error('[CivicAI Controller] AI analysis failed, maintaining fallback:', aiErr.message);
+      savedGrievance.aiAnalysis = {
+        category: savedGrievance.category,
+        department: savedGrievance.department,
+        priority: savedGrievance.priority,
+        summary: `Citizen grievance reported: ${savedGrievance.title}`,
+        suggestedAction: `Assign to ${savedGrievance.department} for review.`,
+        status: 'failed',
+        confidenceScore: 0.5,
+        analyzedAt: new Date(),
+      };
+      await savedGrievance.save();
+    }
+
     await savedGrievance.populate('citizenId', 'name email phone');
 
     res.status(201).json({
       success: true,
-      message: 'Grievance submitted successfully',
+      message: 'Grievance submitted and analyzed successfully',
       grievance: savedGrievance,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Re-run AI analysis on existing grievance
+// @route   POST /api/grievances/:id/analyze
+// @access  Private (Citizen / Officer / Admin)
+const reanalyzeGrievance = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const grievance = await Grievance.findById(id);
+
+    if (!grievance) {
+      return res.status(404).json({ success: false, message: 'Grievance not found' });
+    }
+
+    // Role check: Citizen can only re-analyze their own
+    if (
+      req.user.role === 'citizen' &&
+      grievance.citizenId.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const aiResult = await analyzeGrievance({
+      title: grievance.title,
+      description: grievance.description,
+      category: grievance.category,
+      priority: grievance.priority,
+      location: grievance.location,
+    });
+
+    grievance.aiAnalysis = aiResult;
+    const updated = await grievance.save();
+
+    res.json({
+      success: true,
+      message: 'AI analysis updated successfully',
+      aiAnalysis: updated.aiAnalysis,
+      grievance: updated,
     });
   } catch (error) {
     next(error);
@@ -312,4 +384,5 @@ module.exports = {
   getGrievanceById,
   updateGrievance,
   deleteGrievance,
+  reanalyzeGrievance,
 };

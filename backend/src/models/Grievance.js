@@ -133,15 +133,19 @@ const grievanceSchema = new mongoose.Schema(
       index: true,
     },
     aiAnalysis: {
-      categorySuggested: { type: String, default: null },
-      departmentSuggested: { type: String, default: null },
-      prioritySuggested: { type: String, default: null },
-      confidenceScore: { type: Number, default: null },
+      category: { type: String, default: null },
+      department: { type: String, default: null },
+      priority: { type: String, default: null },
       summary: { type: String, default: null },
-      sentiment: { type: String, default: null },
       suggestedAction: { type: String, default: null },
-      keywords: [{ type: String }],
+      status: {
+        type: String,
+        enum: ['pending', 'completed', 'failed'],
+        default: 'pending',
+      },
+      confidenceScore: { type: Number, default: 0.9 },
       analyzedAt: { type: Date, default: null },
+      rawResponse: { type: String, select: false },
     },
     resolution: {
       resolvedBy: {

@@ -160,6 +160,16 @@ const seedDatabase = async () => {
         ],
         citizenId: citizenAarav._id,
         assignedOfficer: pwdOfficer._id,
+        aiAnalysis: {
+          category: 'Roads',
+          department: 'Public Works & Roads',
+          priority: 'High',
+          summary: 'Multiple deep asphalt potholes near Master Canteen causing commuter hazard and severe skidding.',
+          suggestedAction: 'Deploy asphalt road patching unit and roller equipment for urgent leveling.',
+          status: 'completed',
+          confidenceScore: 0.94,
+          analyzedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        },
         statusHistory: [
           {
             status: 'Submitted',
@@ -204,6 +214,16 @@ const seedDatabase = async () => {
         ],
         citizenId: citizenAarav._id,
         assignedOfficer: waterOfficer._id,
+        aiAnalysis: {
+          category: 'Water Supply',
+          department: 'Water Supply & Sanitation',
+          priority: 'Critical',
+          summary: 'Critical underground potable water pipeline rupture causing severe flooding and household shortage.',
+          suggestedAction: 'Isolate main water distribution valve and dispatch emergency excavation and pipeline replacement team.',
+          status: 'completed',
+          confidenceScore: 0.98,
+          analyzedAt: new Date(Date.now() - 18 * 60 * 60 * 1000),
+        },
         statusHistory: [
           {
             status: 'Submitted',
@@ -239,6 +259,16 @@ const seedDatabase = async () => {
         },
         images: [],
         citizenId: citizenAarav._id,
+        aiAnalysis: {
+          category: 'Waste Management',
+          department: 'Waste Management',
+          priority: 'Medium',
+          summary: 'Uncollected municipal garbage bins creating odor and sanitation hazard near market entrance.',
+          suggestedAction: 'Dispatch hydraulic compactor vehicle and sanitation crew for bin emptying and lime bleaching.',
+          status: 'completed',
+          confidenceScore: 0.91,
+          analyzedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        },
         statusHistory: [
           {
             status: 'Submitted',
