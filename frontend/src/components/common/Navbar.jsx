@@ -8,6 +8,7 @@ import {
   LogOut,
   User,
   Sparkles,
+  Wrench,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -83,6 +84,20 @@ const Navbar = () => {
                       <PlusCircle size={16} />
                       <span>File Grievance</span>
                     </Link>
+                  </li>
+                </>
+              )}
+
+              {role === 'officer' && (
+                <>
+                  <li>
+                    <NavLink
+                      to="/officer"
+                      className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                    >
+                      <Wrench size={16} />
+                      <span>Officer Tasks</span>
+                    </NavLink>
                   </li>
                 </>
               )}

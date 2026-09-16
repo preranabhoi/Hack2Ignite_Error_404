@@ -9,6 +9,7 @@ const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 const authRoutes = require('./routes/authRoutes');
 const grievanceRoutes = require('./routes/grievanceRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const officerRoutes = require('./routes/officerRoutes');
 const User = require('./models/User');
 const { seedUsers } = require('./utils/seed');
 
@@ -61,6 +62,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/grievances', grievanceRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/officer', officerRoutes);
 
 // Error Handling Middleware
 app.use(notFound);

@@ -14,6 +14,8 @@ import CreateGrievancePage from './pages/CreateGrievancePage';
 import MyGrievancesPage from './pages/MyGrievancesPage';
 import GrievanceDetailPage from './pages/GrievanceDetailPage';
 import AdminDashboard from './pages/AdminDashboard';
+import OfficerDashboard from './pages/OfficerDashboard';
+import OfficerGrievanceDetailPage from './pages/OfficerGrievanceDetailPage';
 
 function App() {
   return (
@@ -58,6 +60,24 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <GrievanceDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Protected Officer Routes */}
+              <Route
+                path="/officer"
+                element={
+                  <ProtectedRoute allowedRoles={['officer']}>
+                    <OfficerDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/officer/grievances/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['officer']}>
+                    <OfficerGrievanceDetailPage />
                   </ProtectedRoute>
                 }
               />

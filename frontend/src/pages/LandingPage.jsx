@@ -21,8 +21,14 @@ const LandingPage = () => {
 
   const handleQuickDemo = async (role) => {
     try {
-      await demoLogin(role);
-      navigate('/dashboard');
+      const res = await demoLogin(role);
+      if (res.user?.role === 'admin' || role === 'admin') {
+        navigate('/admin');
+      } else if (res.user?.role === 'officer' || role === 'officer') {
+        navigate('/officer');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       console.error('Demo login error:', err);
     }
@@ -171,6 +177,14 @@ const LandingPage = () => {
                 >
                   <Users size={14} />
                   <span>Demo Citizen (Aarav)</span>
+                </button>
+                <button
+                  onClick={() => handleQuickDemo('officer')}
+                  className="btn btn-sm"
+                  style={{ backgroundColor: '#0d9488', color: 'white', border: '1px solid #5eead4' }}
+                >
+                  <Building size={14} />
+                  <span>Demo Officer (Rajesh - PWD)</span>
                 </button>
                 <button
                   onClick={() => handleQuickDemo('admin')}

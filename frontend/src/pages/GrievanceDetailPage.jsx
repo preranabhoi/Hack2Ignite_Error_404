@@ -695,9 +695,38 @@ const GrievanceDetailPage = () => {
                 {grievance.resolution.actionTaken || 'Field team resolved the complaint and restored public utility.'}
               </p>
               {grievance.resolution.remarks && (
-                <p style={{ fontSize: '0.85rem', color: '#047857' }}>
+                <p style={{ fontSize: '0.85rem', color: '#047857', marginBottom: '0.75rem' }}>
                   <strong>Remarks:</strong> {grievance.resolution.remarks}
                 </p>
+              )}
+              {grievance.resolution.resolutionProofImages && grievance.resolution.resolutionProofImages.length > 0 && (
+                <div style={{ marginTop: '0.75rem', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#065f46', display: 'block', marginBottom: '0.4rem' }}>
+                    Resolution Proof Photo(s):
+                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {grievance.resolution.resolutionProofImages.map((proofImg, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => setSelectedImageModal(proofImg)}
+                        style={{
+                          width: '100px',
+                          height: '80px',
+                          borderRadius: 'var(--radius-md)',
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          border: '1px solid #a7f3d0',
+                        }}
+                      >
+                        <img
+                          src={proofImg}
+                          alt={`Proof ${idx + 1}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
               {grievance.resolution.resolvedAt && (
                 <span style={{ fontSize: '0.75rem', color: '#059669', display: 'block', marginTop: '0.5rem' }}>

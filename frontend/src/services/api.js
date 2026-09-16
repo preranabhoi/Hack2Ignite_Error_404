@@ -129,4 +129,46 @@ export const adminService = {
   },
 };
 
+// Officer API Service
+export const officerService = {
+  getStats: async () => {
+    const response = await api.get('/officer/stats');
+    return response.data;
+  },
+  getGrievances: async (params = {}) => {
+    const response = await api.get('/officer/grievances', { params });
+    return response.data;
+  },
+  getById: async (id) => {
+    const response = await api.get(`/officer/grievances/${id}`);
+    return response.data;
+  },
+  acceptAssignment: async (id, notes = '') => {
+    const response = await api.patch(`/officer/grievances/${id}/accept`, { notes });
+    return response.data;
+  },
+  startWork: async (id, { notes, estimatedCompletion } = {}) => {
+    const response = await api.patch(`/officer/grievances/${id}/start`, {
+      notes,
+      estimatedCompletion,
+    });
+    return response.data;
+  },
+  addProgressNote: async (id, { note, image }) => {
+    const response = await api.patch(`/officer/grievances/${id}/progress`, {
+      note,
+      image,
+    });
+    return response.data;
+  },
+  resolveGrievance: async (id, { actionTaken, remarks, resolutionProofImages }) => {
+    const response = await api.patch(`/officer/grievances/${id}/resolve`, {
+      actionTaken,
+      remarks,
+      resolutionProofImages,
+    });
+    return response.data;
+  },
+};
+
 export default api;

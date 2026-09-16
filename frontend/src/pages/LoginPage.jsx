@@ -35,8 +35,10 @@ const LoginPage = () => {
       if (res.success) {
         if (res.user.role === 'admin') {
           navigate('/admin');
+        } else if (res.user.role === 'officer') {
+          navigate('/officer');
         } else {
-          navigate(redirectPath === '/admin' ? '/dashboard' : redirectPath);
+          navigate(redirectPath === '/admin' || redirectPath === '/officer' ? '/dashboard' : redirectPath);
         }
       }
     } catch (err) {
@@ -56,6 +58,8 @@ const LoginPage = () => {
       if (res.success) {
         if (roleType === 'admin' || res.user?.role === 'admin') {
           navigate('/admin');
+        } else if (roleType === 'officer' || res.user?.role === 'officer') {
+          navigate('/officer');
         } else {
           navigate('/dashboard');
         }
@@ -235,6 +239,29 @@ const LoginPage = () => {
                 <div style={{ fontWeight: 600 }}>Login as Citizen (Aarav Sharma)</div>
                 <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
                   citizen@civicai.gov
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDemo('officer')}
+              disabled={isSubmitting}
+              className="btn btn-secondary btn-sm"
+              style={{
+                justifyContent: 'flex-start',
+                padding: '0.6rem 0.85rem',
+                borderColor: '#99f6e4',
+                backgroundColor: '#f0fdfa',
+              }}
+            >
+              <Building size={16} color="#0d9488" />
+              <div style={{ textAlign: 'left', lineHeight: '1.2' }}>
+                <div style={{ fontWeight: 600, color: '#0f766e' }}>
+                  Login as Field Officer (Rajesh Verma - PWD)
+                </div>
+                <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
+                  officer.pwd@civicai.gov
                 </div>
               </div>
             </button>
