@@ -104,6 +104,8 @@ const seedUsers = [
   },
 ];
 
+const { Grievance } = require('../models/Grievance');
+
 const seedDatabase = async () => {
   try {
     const mongoUri =
@@ -111,16 +113,150 @@ const seedDatabase = async () => {
     await mongoose.connect(mongoUri);
     console.log('[CivicAI Seed] Connected to MongoDB...');
 
-    // Clear existing users
+    // Clear existing users and grievances
     await User.deleteMany({});
-    console.log('[CivicAI Seed] Cleared existing users.');
+    await Grievance.deleteMany({});
+    console.log('[CivicAI Seed] Cleared existing users and grievances.');
 
     // Create users individually so pre-save hook hashes password properly
+    const createdUsers = [];
     for (const userData of seedUsers) {
-      await User.create(userData);
+      const user = await User.create(userData);
+      createdUsers.push(user);
     }
 
-    console.log(`[CivicAI Seed] Successfully seeded ${seedUsers.length} demo users!`);
+    const citizenAarav = createdUsers.find(
+      (u) => u.email === 'citizen@civicai.gov'
+    );
+    const pwdOfficer = createdUsers.find(
+      (u) => u.email === 'officer.pwd@civicai.gov'
+    );
+    const waterOfficer = createdUsers.find(
+      (u) => u.email === 'officer.water@civicai.gov'
+    );
+
+    // Seed initial realistic grievances for citizen
+    const sampleGrievances = [
+      {
+        trackingId: 'CIVIC-2026-1042',
+        title: 'Severe Potholes and Damaged Asphalt on Master Canteen Main Road',
+        description:
+          'Multiple deep potholes have formed on the main road stretch near Master Canteen square towards station road. During evening peak hours, two-wheelers are skidding and traffic congestion is extreme. Needs urgent resurfacing.',
+        category: 'Roads',
+        department: 'Public Works & Roads',
+        priority: 'High',
+        status: 'In Progress',
+        location: {
+          address: 'Master Canteen Square, Janpath Road, Unit 3',
+          latitude: 20.2646,
+          longitude: 85.8398,
+          landmark: 'Opposite Railway Station Entry 2',
+          city: 'Bhubaneswar',
+          ward: 'Ward 12',
+          pincode: '751001',
+        },
+        images: [
+          'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=800&q=80',
+        ],
+        citizenId: citizenAarav._id,
+        assignedOfficer: pwdOfficer._id,
+        statusHistory: [
+          {
+            status: 'Submitted',
+            changedBy: citizenAarav._id,
+            comment: 'Citizen submitted grievance report with location and photograph.',
+            timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+          },
+          {
+            status: 'Under Review',
+            changedBy: pwdOfficer._id,
+            comment: 'Municipal inspection team verified site condition.',
+            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+          },
+          {
+            status: 'In Progress',
+            changedBy: pwdOfficer._id,
+            comment: 'Asphalt patching crew dispatched with heavy road roller equipment.',
+            timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+          },
+        ],
+      },
+      {
+        trackingId: 'CIVIC-2026-1088',
+        title: 'Drinking Water Pipeline Burst Causing Flooding in Lane 4',
+        description:
+          'Main underground drinking water distribution pipeline has ruptured near plot 214. Clean potable water has been gushing out continuously for the past 14 hours, flooding resident driveways and causing zero pressure in households.',
+        category: 'Water Supply',
+        department: 'Water Supply & Sanitation',
+        priority: 'Critical',
+        status: 'Assigned',
+        location: {
+          address: 'Plot 214, Lane 4, Saheed Nagar',
+          latitude: 20.2917,
+          longitude: 85.8456,
+          landmark: 'Behind Community Center Park',
+          city: 'Bhubaneswar',
+          ward: 'Ward 14 (Saheed Nagar)',
+          pincode: '751007',
+        },
+        images: [
+          'https://images.unsplash.com/photo-1584467735871-8e85353a8413?auto=format&fit=crop&w=800&q=80',
+        ],
+        citizenId: citizenAarav._id,
+        assignedOfficer: waterOfficer._id,
+        statusHistory: [
+          {
+            status: 'Submitted',
+            changedBy: citizenAarav._id,
+            comment: 'Emergency report logged by citizen.',
+            timestamp: new Date(Date.now() - 18 * 60 * 60 * 1000),
+          },
+          {
+            status: 'Assigned',
+            changedBy: waterOfficer._id,
+            comment: 'Assigned to Ward 14 Water Works Emergency Repair Crew.',
+            timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
+          },
+        ],
+      },
+      {
+        trackingId: 'CIVIC-2026-1120',
+        title: 'Overflowing Garbage Bins & Illegal Dumping at Market Corner',
+        description:
+          'Community waste containers have not been emptied for 4 consecutive days. Stray animals are scattering plastic waste across the pedestrian footpath causing terrible odor and sanitary hazard.',
+        category: 'Waste Management',
+        department: 'Waste Management',
+        priority: 'Medium',
+        status: 'Submitted',
+        location: {
+          address: 'Daily Market Complex, Sector 9, Saheed Nagar',
+          latitude: 20.2882,
+          longitude: 85.8421,
+          landmark: 'Near Vegetable Mandi Gate 1',
+          city: 'Bhubaneswar',
+          ward: 'Ward 14 (Saheed Nagar)',
+          pincode: '751007',
+        },
+        images: [],
+        citizenId: citizenAarav._id,
+        statusHistory: [
+          {
+            status: 'Submitted',
+            changedBy: citizenAarav._id,
+            comment: 'Grievance submitted by citizen.',
+            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+          },
+        ],
+      },
+    ];
+
+    for (const g of sampleGrievances) {
+      await Grievance.create(g);
+    }
+
+    console.log(
+      `[CivicAI Seed] Successfully seeded ${seedUsers.length} users and ${sampleGrievances.length} demo grievances!`
+    );
     console.log('----------------------------------------------------');
     console.log('Demo Credentials (Password for all: password123):');
     console.log('1. Citizen: citizen@civicai.gov');

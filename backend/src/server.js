@@ -7,6 +7,7 @@ require('dotenv').config();
 const connectDB = require('./config/db');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 const authRoutes = require('./routes/authRoutes');
+const grievanceRoutes = require('./routes/grievanceRoutes');
 const User = require('./models/User');
 const { seedUsers } = require('./utils/seed');
 
@@ -57,6 +58,7 @@ app.get('/api/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/grievances', grievanceRoutes);
 
 // Error Handling Middleware
 app.use(notFound);
