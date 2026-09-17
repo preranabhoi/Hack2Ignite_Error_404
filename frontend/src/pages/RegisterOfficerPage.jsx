@@ -12,7 +12,6 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle2,
-  Shield,
   Briefcase,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -26,6 +25,16 @@ const DEPARTMENTS = [
   'Street Lighting',
   'Public Safety',
   'Environment',
+];
+
+const DESIGNATIONS = [
+  'Field Officer',
+  'Senior Field Officer',
+  'Municipal Officer',
+  'Department Officer',
+  'Assistant Engineer',
+  'Senior Executive Engineer',
+  'Sanitary Inspector',
 ];
 
 const RegisterOfficerPage = () => {
@@ -44,6 +53,7 @@ const RegisterOfficerPage = () => {
 
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const { registerOfficer } = useAuth();
   const navigate = useNavigate();
@@ -87,7 +97,7 @@ const RegisterOfficerPage = () => {
 
       const res = await registerOfficer(payload);
       if (res.success) {
-        navigate('/officer');
+        setIsSuccess(true);
       }
     } catch (err) {
       setError(
@@ -97,6 +107,56 @@ const RegisterOfficerPage = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (isSuccess) {
+    return (
+      <div
+        style={{
+          maxWidth: '520px',
+          margin: '3rem auto',
+          padding: '0 1rem',
+        }}
+      >
+        <div className="card-elevated" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
+          <div
+            style={{
+              width: '4rem',
+              height: '4rem',
+              borderRadius: '50%',
+              backgroundColor: '#f0fdfa',
+              color: '#0d9488',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '1.25rem',
+            }}
+          >
+            <CheckCircle2 size={36} />
+          </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+            Field Officer account created successfully.
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '2rem' }}>
+            Welcome, {formData.name}! Your field officer credentials for {formData.department} have been registered.
+          </p>
+          <Link
+            to="/login/officer"
+            className="btn"
+            style={{
+              width: '100%',
+              justifyContent: 'center',
+              backgroundColor: '#0d9488',
+              color: 'white',
+              fontWeight: 700,
+            }}
+          >
+            <span>Sign in as Field Officer</span>
+            <ArrowRight size={16} />
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -129,7 +189,7 @@ const RegisterOfficerPage = () => {
             Field Officer Registration
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Register your official field officer account to manage assigned public grievances.
+            Create your CivicAI field officer account.
           </p>
         </div>
 
@@ -280,17 +340,22 @@ const RegisterOfficerPage = () => {
             {/* Designation */}
             <div className="form-group">
               <label className="form-label" htmlFor="designation">
-                Designation
+                Designation *
               </label>
-              <input
+              <select
                 id="designation"
                 name="designation"
-                type="text"
-                placeholder="e.g. Senior Executive Engineer"
-                className="form-input"
+                className="form-select"
                 value={formData.designation}
                 onChange={handleChange}
-              />
+                required
+              >
+                {DESIGNATIONS.map((desig) => (
+                  <option key={desig} value={desig}>
+                    {desig}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Ward / Area */}
@@ -421,8 +486,8 @@ const RegisterOfficerPage = () => {
           }}
         >
           Already have an account?{' '}
-          <Link to="/login" style={{ fontWeight: 600 }}>
-            Sign In
+          <Link to="/login/officer" style={{ fontWeight: 700, color: '#0d9488' }}>
+            Sign in as Field Officer
           </Link>
         </div>
       </div>

@@ -44,6 +44,39 @@ export const AuthProvider = ({ children }) => {
     return res;
   };
 
+  const loginCitizen = async (email, password) => {
+    const res = await authService.loginCitizen({ email, password });
+    if (res.success) {
+      setToken(res.token);
+      setUser(res.user);
+      localStorage.setItem('civicai_token', res.token);
+      localStorage.setItem('civicai_user', JSON.stringify(res.user));
+    }
+    return res;
+  };
+
+  const loginOfficer = async (email, password) => {
+    const res = await authService.loginOfficer({ email, password });
+    if (res.success) {
+      setToken(res.token);
+      setUser(res.user);
+      localStorage.setItem('civicai_token', res.token);
+      localStorage.setItem('civicai_user', JSON.stringify(res.user));
+    }
+    return res;
+  };
+
+  const loginAdmin = async (email, password) => {
+    const res = await authService.loginAdmin({ email, password });
+    if (res.success) {
+      setToken(res.token);
+      setUser(res.user);
+      localStorage.setItem('civicai_token', res.token);
+      localStorage.setItem('civicai_user', JSON.stringify(res.user));
+    }
+    return res;
+  };
+
   const register = async (userData) => {
     const res = await authService.register(userData);
     if (res.success) {
@@ -129,6 +162,9 @@ export const AuthProvider = ({ children }) => {
         role: user ? user.role : null,
         isLoading,
         login,
+        loginCitizen,
+        loginOfficer,
+        loginAdmin,
         register,
         registerCitizen,
         registerOfficer,

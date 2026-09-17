@@ -11,7 +11,7 @@ import {
   ArrowRight,
   AlertCircle,
   Loader2,
-  Building,
+  CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -28,6 +28,7 @@ const RegisterAdminPage = () => {
 
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const { registerAdmin } = useAuth();
   const navigate = useNavigate();
@@ -44,12 +45,12 @@ const RegisterAdminPage = () => {
     setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError('Passwords do not match.');
       return;
     }
 
     if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
+      setError('Password must be at least 8 characters long.');
       return;
     }
 
@@ -74,7 +75,7 @@ const RegisterAdminPage = () => {
 
       const res = await registerAdmin(payload);
       if (res.success) {
-        navigate('/admin');
+        setIsSuccess(true);
       }
     } catch (err) {
       setError(
@@ -84,6 +85,56 @@ const RegisterAdminPage = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (isSuccess) {
+    return (
+      <div
+        style={{
+          maxWidth: '520px',
+          margin: '3rem auto',
+          padding: '0 1rem',
+        }}
+      >
+        <div className="card-elevated" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
+          <div
+            style={{
+              width: '4rem',
+              height: '4rem',
+              borderRadius: '50%',
+              backgroundColor: '#eef2ff',
+              color: '#4338ca',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '1.25rem',
+            }}
+          >
+            <CheckCircle2 size={36} />
+          </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+            Administrator account created successfully.
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '2rem' }}>
+            Welcome, {formData.name}! Your system administrator credentials have been provisioned and verified.
+          </p>
+          <Link
+            to="/login/admin"
+            className="btn"
+            style={{
+              width: '100%',
+              justifyContent: 'center',
+              backgroundColor: '#4338ca',
+              color: 'white',
+              fontWeight: 700,
+            }}
+          >
+            <span>Sign in as Administrator</span>
+            <ArrowRight size={16} />
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -116,7 +167,7 @@ const RegisterAdminPage = () => {
             Administrator Registration
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Create a secure CivicAI system administrator account.
+            Create a secure CivicAI administrator account.
           </p>
         </div>
 
@@ -212,15 +263,23 @@ const RegisterAdminPage = () => {
               <label className="form-label" htmlFor="phone">
                 Mobile Number
               </label>
-              <input
-                id="phone"
-                name="phone"
-                type="tel"
-                placeholder="+91 XXXXX XXXXX"
-                className="form-input"
-                value={formData.phone}
-                onChange={handleChange}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="+91 XXXXX XXXXX"
+                  className="form-input"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  style={{ paddingLeft: '2.5rem' }}
+                />
+                <Phone
+                  size={16}
+                  color="var(--text-subtle)"
+                  style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }}
+                />
+              </div>
             </div>
           </div>
 
@@ -255,34 +314,50 @@ const RegisterAdminPage = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label" htmlFor="password">
-                Password *
+                Password * (min 8 chars)
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                placeholder="••••••••"
-                className="form-input"
-                value={formData.password}
-                onChange={handleChange}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  className="form-input"
+                  value={formData.password}
+                  onChange={handleChange}
+                  style={{ paddingLeft: '2.5rem' }}
+                />
+                <Lock
+                  size={16}
+                  color="var(--text-subtle)"
+                  style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }}
+                />
+              </div>
             </div>
 
             <div className="form-group">
               <label className="form-label" htmlFor="confirmPassword">
                 Confirm Password *
               </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                required
-                placeholder="••••••••"
-                className="form-input"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  className="form-input"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  style={{ paddingLeft: '2.5rem' }}
+                />
+                <Lock
+                  size={16}
+                  color="var(--text-subtle)"
+                  style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }}
+                />
+              </div>
             </div>
           </div>
 
@@ -322,8 +397,8 @@ const RegisterAdminPage = () => {
           }}
         >
           Already have an account?{' '}
-          <Link to="/login" style={{ fontWeight: 600 }}>
-            Sign In
+          <Link to="/login/admin" style={{ fontWeight: 700, color: '#4338ca' }}>
+            Sign in as Administrator
           </Link>
         </div>
       </div>

@@ -10,6 +10,7 @@ import {
   ArrowRight,
   AlertCircle,
   Loader2,
+  CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -22,11 +23,11 @@ const RegisterPage = () => {
     phone: '',
     city: 'Bhubaneswar',
     ward: '',
-    pincode: '',
   });
 
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -43,12 +44,12 @@ const RegisterPage = () => {
     setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError('Passwords do not match.');
       return;
     }
 
     if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
+      setError('Password must be at least 8 characters long.');
       return;
     }
 
@@ -56,20 +57,19 @@ const RegisterPage = () => {
 
     try {
       const payload = {
-        name: formData.name,
-        email: formData.email,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
         password: formData.password,
-        phone: formData.phone,
-        ward: formData.ward,
-        city: formData.city,
+        confirmPassword: formData.confirmPassword,
+        phone: formData.phone.trim(),
+        ward: formData.ward.trim(),
+        city: formData.city.trim(),
       };
-
-      console.log('Registration payload:', payload);
 
       const res = await register(payload);
 
       if (res.success) {
-        navigate('/dashboard');
+        setIsSuccess(true);
       }
     } catch (err) {
       setError(
@@ -79,6 +79,50 @@ const RegisterPage = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (isSuccess) {
+    return (
+      <div
+        style={{
+          maxWidth: '520px',
+          margin: '3rem auto',
+          padding: '0 1rem',
+        }}
+      >
+        <div className="card-elevated" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
+          <div
+            style={{
+              width: '4rem',
+              height: '4rem',
+              borderRadius: '50%',
+              backgroundColor: '#ecfdf5',
+              color: '#10b981',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '1.25rem',
+            }}
+          >
+            <CheckCircle2 size={36} />
+          </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+            Citizen account created successfully.
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '2rem' }}>
+            Welcome, {formData.name}! Your citizen account has been registered. You can now sign in to submit and track your civic grievances.
+          </p>
+          <Link
+            to="/login/citizen"
+            className="btn btn-primary"
+            style={{ width: '100%', justifyContent: 'center', fontWeight: 700 }}
+          >
+            <span>Sign in as Citizen</span>
+            <ArrowRight size={16} />
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -107,11 +151,11 @@ const RegisterPage = () => {
           >
             <UserPlus size={28} />
           </div>
-          <h2 style={{ fontSize: '1.6rem', marginBottom: '0.4rem' }}>
+          <h2 style={{ fontSize: '1.6rem', marginBottom: '0.4rem', fontWeight: 800 }}>
             Citizen Registration
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Create your citizen account to file and track civic grievances
+            Create your citizen account to file and track civic grievances.
           </p>
         </div>
 
@@ -140,7 +184,7 @@ const RegisterPage = () => {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label" htmlFor="name">
-              Full Legal Name *
+              Full Name *
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -241,7 +285,7 @@ const RegisterPage = () => {
           >
             <div className="form-group">
               <label className="form-label" htmlFor="password">
-                Password * (min 8 characters)
+                Password * (min 8 chars)
               </label>
               <div style={{ position: 'relative' }}>
                 <input
@@ -308,17 +352,30 @@ const RegisterPage = () => {
           >
             <div className="form-group">
               <label className="form-label" htmlFor="ward">
-                Ward / Area (Optional)
+                Ward / Area
               </label>
-              <input
-                id="ward"
-                name="ward"
-                type="text"
-                className="form-input"
-                placeholder="e.g. Ward 14 (Saheed Nagar)"
-                value={formData.ward}
-                onChange={handleChange}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="ward"
+                  name="ward"
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Ward 14"
+                  value={formData.ward}
+                  onChange={handleChange}
+                  style={{ paddingLeft: '2.5rem' }}
+                />
+                <MapPin
+                  size={16}
+                  color="var(--text-subtle)"
+                  style={{
+                    position: 'absolute',
+                    left: '0.85rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                  }}
+                />
+              </div>
             </div>
 
             <div className="form-group">
@@ -339,13 +396,13 @@ const RegisterPage = () => {
           <button
             type="submit"
             className="btn btn-primary"
-            style={{ width: '100%', marginTop: '1rem' }}
+            style={{ width: '100%', marginTop: '1rem', fontWeight: 700 }}
             disabled={isSubmitting}
           >
             {isSubmitting ? (
               <>
                 <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                <span>Creating account...</span>
+                <span>Creating Citizen Account...</span>
               </>
             ) : (
               <>
@@ -366,8 +423,8 @@ const RegisterPage = () => {
           }}
         >
           Already have an account?{' '}
-          <Link to="/login" style={{ fontWeight: 600 }}>
-            Sign In
+          <Link to="/login/citizen" style={{ fontWeight: 700, color: 'var(--primary)' }}>
+            Sign in as Citizen
           </Link>
         </div>
       </div>

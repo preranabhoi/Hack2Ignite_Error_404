@@ -370,10 +370,8 @@ const registerAdmin = async (req, res, next) => {
   }
 };
 
-// @desc    Authenticate user & get token
-// @route   POST /api/auth/login
-// @access  Public
-const login = async (req, res, next) => {
+// Helper to perform authenticated login with optional role enforcement
+const authenticateUser = async (req, res, next, expectedRole = null) => {
   try {
     const { email, password } = req.body;
 
@@ -411,6 +409,19 @@ const login = async (req, res, next) => {
       });
     }
 
+    // Role-specific check if invoked via role login endpoint
+    if (expectedRole && user.role !== expectedRole) {
+      const messages = {
+        citizen: 'These credentials are not registered as a Citizen.',
+        officer: 'These credentials are not registered as a Field Officer.',
+        admin: 'These credentials are not registered as an Administrator.',
+      };
+      return res.status(403).json({
+        success: false,
+        message: messages[expectedRole] || `These credentials are not registered for this role.`,
+      });
+    }
+
     const token = generateToken(user._id);
 
     res.json({
@@ -435,6 +446,22 @@ const login = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Universal Login
+// @route   POST /api/auth/login
+const login = (req, res, next) => authenticateUser(req, res, next, null);
+
+// @desc    Citizen Login
+// @route   POST /api/auth/login/citizen
+const loginCitizen = (req, res, next) => authenticateUser(req, res, next, 'citizen');
+
+// @desc    Field Officer Login
+// @route   POST /api/auth/login/officer
+const loginOfficer = (req, res, next) => authenticateUser(req, res, next, 'officer');
+
+// @desc    Administrator Login
+// @route   POST /api/auth/login/admin
+const loginAdmin = (req, res, next) => authenticateUser(req, res, next, 'admin');
 
 // @desc    Get logged in user profile
 // @route   GET /api/auth/me
@@ -535,6 +562,9 @@ module.exports = {
   registerOfficer,
   registerAdmin,
   login,
+  loginCitizen,
+  loginOfficer,
+  loginAdmin,
   getMe,
   updateProfile,
   getOfficers,

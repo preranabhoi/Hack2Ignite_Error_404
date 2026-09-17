@@ -7,7 +7,11 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 
 // Pages
 import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
+import LoginPortalPage from './pages/LoginPortalPage';
+import RegisterPortalPage from './pages/RegisterPortalPage';
+import LoginCitizenPage from './pages/LoginCitizenPage';
+import LoginOfficerPage from './pages/LoginOfficerPage';
+import LoginAdminPage from './pages/LoginAdminPage';
 import RegisterPage from './pages/RegisterPage';
 import RegisterOfficerPage from './pages/RegisterOfficerPage';
 import RegisterAdminPage from './pages/RegisterAdminPage';
@@ -30,10 +34,14 @@ function App() {
           <Navbar />
           <main style={{ flex: 1 }}>
             <Routes>
-              {/* Public Routes */}
+              {/* Public Gateway & Role Auth Routes */}
               <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/login" element={<LoginPortalPage />} />
+              <Route path="/login/citizen" element={<LoginCitizenPage />} />
+              <Route path="/login/officer" element={<LoginOfficerPage />} />
+              <Route path="/login/admin" element={<LoginAdminPage />} />
+
+              <Route path="/register" element={<RegisterPortalPage />} />
               <Route path="/register/citizen" element={<RegisterPage />} />
               <Route path="/register-officer" element={<RegisterOfficerPage />} />
               <Route path="/register/officer" element={<RegisterOfficerPage />} />

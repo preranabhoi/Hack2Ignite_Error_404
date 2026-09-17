@@ -45,6 +45,18 @@ export const authService = {
     const response = await api.post('/auth/login', credentials);
     return response.data;
   },
+  loginCitizen: async (credentials) => {
+    const response = await api.post('/auth/login/citizen', credentials);
+    return response.data;
+  },
+  loginOfficer: async (credentials) => {
+    const response = await api.post('/auth/login/officer', credentials);
+    return response.data;
+  },
+  loginAdmin: async (credentials) => {
+    const response = await api.post('/auth/login/admin', credentials);
+    return response.data;
+  },
   register: async (userData) => {
     const response = await api.post('/auth/register', userData);
     return response.data;
