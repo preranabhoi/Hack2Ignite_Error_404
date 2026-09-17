@@ -47,25 +47,26 @@ const RegisterPage = () => {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const res = await register({
+      const payload = {
         name: formData.name,
         email: formData.email,
         password: formData.password,
         phone: formData.phone,
-        address: {
-          city: formData.city,
-          ward: formData.ward,
-          pincode: formData.pincode,
-        },
-      });
+        ward: formData.ward,
+        city: formData.city,
+      };
+
+      console.log('Registration payload:', payload);
+
+      const res = await register(payload);
 
       if (res.success) {
         navigate('/dashboard');
@@ -240,7 +241,7 @@ const RegisterPage = () => {
           >
             <div className="form-group">
               <label className="form-label" htmlFor="password">
-                Password * (min 6 characters)
+                Password * (min 8 characters)
               </label>
               <div style={{ position: 'relative' }}>
                 <input

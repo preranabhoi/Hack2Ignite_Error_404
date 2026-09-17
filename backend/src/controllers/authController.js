@@ -24,14 +24,25 @@ const generateToken = (id) => {
 // @access  Public
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, phone, address } = req.body;
+    console.log('Registration request body:', req.body);
+    const { name, email, password, phone, ward, city, address } = req.body;
 
-    if (!name || typeof name !== 'string' || name.trim().length < 2 || name.length > 100 ||
-      !email || typeof email !== 'string' || email.length > 254 ||
-      !password || typeof password !== 'string' || password.length < 8 || password.length > 128) {
+    if (
+      !name ||
+      typeof name !== 'string' ||
+      name.trim().length < 2 ||
+      name.length > 100 ||
+      !email ||
+      typeof email !== 'string' ||
+      email.length > 254 ||
+      !password ||
+      typeof password !== 'string' ||
+      password.length < 8 ||
+      password.length > 128
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide name, email, and password',
+        message: 'Please provide name, email, and password (minimum 8 characters)',
       });
     }
 
@@ -45,6 +56,12 @@ const register = async (req, res, next) => {
       });
     }
 
+    const userAddress = {
+      city: typeof city === 'string' ? city.trim() : (address?.city || ''),
+      ward: typeof ward === 'string' ? ward.trim() : (address?.ward || ''),
+      pincode: address?.pincode || '',
+    };
+
     // Citizens register publicly. Officers/Admins are created by Admin or Seed.
     const user = await User.create({
       name: name.trim(),
@@ -52,8 +69,8 @@ const register = async (req, res, next) => {
       password,
       role: 'citizen',
       department: 'None',
-      phone: phone || '',
-      address: address || {},
+      phone: typeof phone === 'string' ? phone.trim() : '',
+      address: userAddress,
     });
 
     const token = generateToken(user._id);
