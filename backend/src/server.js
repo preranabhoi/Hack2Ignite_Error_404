@@ -11,6 +11,7 @@ const grievanceRoutes = require('./routes/grievanceRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const officerRoutes = require('./routes/officerRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 const User = require('./models/User');
 const { seedUsers } = require('./utils/seed');
 
@@ -65,6 +66,7 @@ app.get('/api/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api/grievances', grievanceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/officer', officerRoutes);

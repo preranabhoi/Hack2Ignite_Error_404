@@ -117,7 +117,21 @@ export const grievanceService = {
     return response.data;
   },
   chatAssistant: async (messages) => {
-    const response = await api.post('/grievances/assistant-chat', { messages });
+    try {
+      const response = await api.post('/ai/citizen-guide', { messages });
+      return response.data;
+    } catch (err) {
+      // Fallback to legacy endpoint if needed
+      const response = await api.post('/grievances/assistant-chat', { messages });
+      return response.data;
+    }
+  },
+};
+
+// AI Guide API Service
+export const aiService = {
+  citizenGuide: async (messages) => {
+    const response = await api.post('/ai/citizen-guide', { messages });
     return response.data;
   },
 };

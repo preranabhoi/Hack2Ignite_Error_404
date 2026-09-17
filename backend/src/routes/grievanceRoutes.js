@@ -10,11 +10,11 @@ const {
   generateGrievanceResolutionRecommendation,
   chatCitizenAssistant,
 } = require('../controllers/grievanceController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, authorize, optionalAuth } = require('../middleware/authMiddleware');
 const { aiRateLimit } = require('../middleware/securityMiddleware');
 
-// Citizen Assistant Chat
-router.post('/assistant-chat', protect, aiRateLimit, chatCitizenAssistant);
+// Citizen Assistant Chat (Public guidance allowed; populates req.user if authenticated)
+router.post('/assistant-chat', optionalAuth, aiRateLimit, chatCitizenAssistant);
 
 // Citizen grievance routes
 router.post('/', protect, authorize('citizen'), createGrievance);

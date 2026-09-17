@@ -12,32 +12,50 @@ import {
   Bot,
   User,
   AlertCircle,
-  HelpCircle,
   ShieldAlert,
+  Edit3,
+  Check,
+  Building,
+  Tag,
+  Clock,
+  MapPin,
+  LogIn,
+  UserPlus,
 } from 'lucide-react';
 import { grievanceService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import PriorityBadge from '../common/PriorityBadge';
-import StatusBadge from '../common/StatusBadge';
 
 const STARTER_PROMPTS = [
-  '🗑️ Garbage piling up near street',
-  '🕳️ Dangerous road pothole',
-  '💡 Streetlight not working at night',
-  '🚰 Water pipe bursting on main road',
-  '🌊 Blocked drain causing sewage overflow',
+  'Broken pipeline',
+  'Garbage piling up',
+  'Dangerous pothole',
+  'Street light not working',
+  'Blocked drainage',
+  'Water supply problem',
+  'Damaged road',
+  'Electric pole issue',
+  'Illegal dumping',
 ];
 
 const INITIAL_MESSAGE = {
   role: 'assistant',
   content:
-    "Hello! I am your **CivicAI Citizen Guide**. I can help you understand how to report a civic issue in your area, suggest the right municipal department, and summarize your details into a ready grievance draft.\n\nWhat issue would you like to report today?",
-  suggestedCategory: null,
-  draftGrievance: null,
-  readyToDraft: false,
+    "Hello! I am your **CivicAI Citizen Guide**. I can help you understand how to report a civic issue in your area, suggest the right municipal department, and summarize your details into a ready grievance draft.\n\nTell me what issue you are facing.",
+  category: null,
+  department: null,
+  priority: null,
+  priorityReason: null,
+  location: null,
+  suggestedAction: null,
+  draft: null,
+  readyForDraft: false,
 };
 
 const CitizenAssistantWidget = () => {
   const navigate = useNavigate();
+  const { user, token } = useAuth();
+  const isAuthenticated = Boolean(user && token);
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([INITIAL_MESSAGE]);
@@ -45,6 +63,9 @@ const CitizenAssistantWidget = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [latestDraft, setLatestDraft] = useState(null);
+  const [isEditingDraft, setIsEditingDraft] = useState(false);
+  const [editedDraft, setEditedDraft] = useState({ title: '', description: '', location: '' });
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -78,27 +99,41 @@ const CitizenAssistantWidget = () => {
         newMessages.map((m) => ({ role: m.role, content: m.content }))
       );
 
-      if (response.success && response.data) {
-        const aiData = response.data;
+      if (response && (response.success || response.data)) {
+        const aiData = response.data || response;
+        const currentDraft = aiData.draft || aiData.draftGrievance || null;
+
         const assistantMsg = {
           role: 'assistant',
           content: aiData.reply || 'I understand. Let me help you prepare this report.',
-          suggestedCategory: aiData.suggestedCategory,
-          draftGrievance: aiData.draftGrievance,
-          readyToDraft: aiData.readyToDraft,
+          category: aiData.category || aiData.suggestedCategory || null,
+          department: aiData.department || null,
+          priority: aiData.priority || null,
+          priorityReason: aiData.priorityReason || null,
+          location: aiData.location || null,
+          suggestedTitle: aiData.suggestedTitle || null,
+          suggestedAction: aiData.suggestedAction || null,
+          draft: currentDraft,
+          readyForDraft: Boolean(aiData.readyForDraft || aiData.readyToDraft || currentDraft),
         };
 
         setMessages((prev) => [...prev, assistantMsg]);
 
-        if (aiData.draftGrievance) {
-          setLatestDraft(aiData.draftGrievance);
+        if (currentDraft) {
+          setLatestDraft(currentDraft);
+          setEditedDraft({
+            title: currentDraft.title || '',
+            description: currentDraft.description || '',
+            location: currentDraft.location || '',
+          });
         }
       } else {
-        setError('Could not get a response from the assistant. Please try again.');
+        setError('The AI assistant is temporarily unavailable. You can still submit your grievance using the standard grievance form.');
       }
     } catch (err) {
       setError(
-        err.response?.data?.message || 'Assistant service is temporarily unavailable. Please try again.'
+        err.response?.data?.message ||
+          'The AI assistant is temporarily unavailable. You can still submit your grievance using the standard grievance form.'
       );
     } finally {
       setIsLoading(false);
@@ -115,22 +150,71 @@ const CitizenAssistantWidget = () => {
   const handleReset = () => {
     setMessages([INITIAL_MESSAGE]);
     setLatestDraft(null);
+    setIsEditingDraft(false);
     setError('');
     setInputMessage('');
   };
 
-  const handleCreateGrievanceFromChat = (draft) => {
-    const payload = draft || latestDraft;
-    if (!payload) return;
+  const handleCreateGrievanceFromChat = (draftToUse = null) => {
+    const activeDraft = draftToUse || latestDraft;
+    if (!activeDraft) return;
+
+    const finalDraft = isEditingDraft
+      ? {
+          ...activeDraft,
+          title: editedDraft.title || activeDraft.title,
+          description: editedDraft.description || activeDraft.description,
+          location: editedDraft.location || activeDraft.location,
+        }
+      : activeDraft;
+
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
 
     setIsOpen(false);
     navigate('/grievances/new', {
       state: {
         prefill: {
-          title: payload.title || '',
-          description: payload.description || '',
-          category: payload.category || 'Other',
+          title: finalDraft.title || '',
+          description: finalDraft.description || '',
+          category: finalDraft.category || 'Roads',
+          priority: finalDraft.priority || 'Medium',
+          location: finalDraft.location || '',
+          department: finalDraft.department || '',
         },
+      },
+    });
+  };
+
+  const handleManualSubmitRedirect = () => {
+    setIsOpen(false);
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: '/grievances/new' } });
+    } else {
+      navigate('/grievances/new');
+    }
+  };
+
+  const handleProceedToLogin = () => {
+    setIsOpen(false);
+    setShowAuthModal(false);
+    navigate('/login', {
+      state: {
+        from: '/grievances/new',
+        prefill: latestDraft,
+      },
+    });
+  };
+
+  const handleProceedToRegister = () => {
+    setIsOpen(false);
+    setShowAuthModal(false);
+    navigate('/register', {
+      state: {
+        from: '/grievances/new',
+        prefill: latestDraft,
       },
     });
   };
@@ -177,10 +261,10 @@ const CitizenAssistantWidget = () => {
           </div>
           <div style={{ textAlign: 'left', lineHeight: '1.15' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block' }}>
-              AI Citizen Guide
+              CivicAI Citizen Guide
             </span>
             <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-              Help reporting issues
+              Advisory issue reporting assistant
             </span>
           </div>
         </button>
@@ -193,8 +277,8 @@ const CitizenAssistantWidget = () => {
             position: 'fixed',
             bottom: '20px',
             right: '20px',
-            width: 'min(420px, calc(100vw - 32px))',
-            height: 'min(620px, calc(100vh - 40px))',
+            width: 'min(440px, calc(100vw - 32px))',
+            height: 'min(640px, calc(100vh - 40px))',
             zIndex: 1600,
             backgroundColor: 'var(--bg-surface)',
             borderRadius: 'var(--radius-lg)',
@@ -310,7 +394,7 @@ const CitizenAssistantWidget = () => {
           >
             <ShieldAlert size={13} color="var(--primary)" style={{ flexShrink: 0 }} />
             <span>
-              Guidance only. Not a govt authority. You will review and submit your grievance manually.
+              Guidance only. Not a government authority. You will review and submit your grievance manually.
             </span>
           </div>
 
@@ -335,7 +419,7 @@ const CitizenAssistantWidget = () => {
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: isUser ? 'flex-end' : 'flex-start',
-                    gap: '0.35rem',
+                    gap: '0.5rem',
                   }}
                 >
                   <div
@@ -382,63 +466,162 @@ const CitizenAssistantWidget = () => {
                     </div>
                   </div>
 
-                  {/* If assistant returned a draft grievance object */}
-                  {!isUser && msg.draftGrievance && (
+                  {/* If assistant returned a structured draft grievance */}
+                  {!isUser && msg.draft && (
                     <div
                       style={{
                         marginLeft: '2rem',
                         marginTop: '0.25rem',
-                        padding: '0.75rem',
+                        padding: '0.85rem',
                         backgroundColor: '#f0fdf4',
                         border: '1px solid #bbf7d0',
                         borderRadius: 'var(--radius-md)',
-                        maxWidth: '88%',
+                        maxWidth: '92%',
+                        boxShadow: 'var(--shadow-sm)',
                       }}
                     >
                       <div
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '0.35rem',
-                          color: '#166534',
-                          fontWeight: 700,
-                          fontSize: '0.78rem',
-                          marginBottom: '0.3rem',
+                          justifyContent: 'space-between',
+                          marginBottom: '0.5rem',
                         }}
                       >
-                        <FileText size={13} />
-                        <span>Ready Grievance Summary</span>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            color: '#166534',
+                            fontWeight: 700,
+                            fontSize: '0.825rem',
+                          }}
+                        >
+                          <FileText size={15} />
+                          <span>Grievance Draft Ready</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingDraft(!isEditingDraft)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#15803d',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                          }}
+                        >
+                          <Edit3 size={12} />
+                          <span>{isEditingDraft ? 'Done Editing' : 'Edit Draft'}</span>
+                        </button>
                       </div>
 
-                      <div style={{ fontSize: '0.8rem', color: '#14532d', marginBottom: '0.25rem' }}>
-                        <strong>Title:</strong> {msg.draftGrievance.title}
-                      </div>
+                      {isEditingDraft ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#166534' }}>Title</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              style={{ fontSize: '0.775rem', padding: '0.3rem 0.5rem' }}
+                              value={editedDraft.title}
+                              onChange={(e) => setEditedDraft({ ...editedDraft, title: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#166534' }}>Location</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              style={{ fontSize: '0.775rem', padding: '0.3rem 0.5rem' }}
+                              value={editedDraft.location}
+                              onChange={(e) => setEditedDraft({ ...editedDraft, location: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#166534' }}>Description</label>
+                            <textarea
+                              rows={3}
+                              className="form-input"
+                              style={{ fontSize: '0.775rem', padding: '0.3rem 0.5rem' }}
+                              value={editedDraft.description}
+                              onChange={(e) => setEditedDraft({ ...editedDraft, description: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ fontSize: '0.825rem', color: '#14532d', marginBottom: '0.35rem', fontWeight: 700 }}>
+                            {editedDraft.title || msg.draft.title}
+                          </div>
 
-                      <div style={{ fontSize: '0.75rem', color: '#166534', marginBottom: '0.6rem' }}>
-                        <strong>Category:</strong> {msg.draftGrievance.category}
-                      </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                            <span style={{ fontSize: '0.7rem', backgroundColor: '#dcfce7', color: '#15803d', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 600 }}>
+                              📁 {msg.draft.category}
+                            </span>
+                            <span style={{ fontSize: '0.7rem', backgroundColor: '#e0e7ff', color: '#3730a3', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 600 }}>
+                              🏢 {msg.draft.department}
+                            </span>
+                            <span style={{ fontSize: '0.7rem', backgroundColor: '#fef3c7', color: '#92400e', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 600 }}>
+                              ⚡ Suggested: {msg.draft.priority}
+                            </span>
+                            {msg.draft.location && (
+                              <span style={{ fontSize: '0.7rem', backgroundColor: '#f1f5f9', color: '#475569', padding: '0.15rem 0.45rem', borderRadius: '4px' }}>
+                                📍 {editedDraft.location || msg.draft.location}
+                              </span>
+                            )}
+                          </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleCreateGrievanceFromChat(msg.draftGrievance)}
-                        className="btn btn-sm"
-                        style={{
-                          width: '100%',
-                          backgroundColor: '#16a34a',
-                          color: 'white',
-                          border: 'none',
-                          fontSize: '0.775rem',
-                          fontWeight: 600,
-                          padding: '0.35rem 0.6rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.35rem',
-                        }}
-                      >
-                        <span>Create grievance from this conversation</span>
-                        <ArrowRight size={13} />
-                      </button>
+                          <div style={{ fontSize: '0.75rem', color: '#166534', marginBottom: '0.75rem', lineHeight: '1.4' }}>
+                            {editedDraft.description || msg.draft.description}
+                          </div>
+                        </>
+                      )}
+
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleCreateGrievanceFromChat(msg.draft)}
+                          className="btn btn-sm"
+                          style={{
+                            flex: 1,
+                            backgroundColor: '#16a34a',
+                            color: 'white',
+                            border: 'none',
+                            fontSize: '0.775rem',
+                            fontWeight: 700,
+                            padding: '0.45rem 0.6rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem',
+                            borderRadius: 'var(--radius-md)',
+                            boxShadow: '0 2px 4px rgba(22, 163, 74, 0.25)',
+                          }}
+                        >
+                          <span>Create Grievance</span>
+                          <ArrowRight size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleReset}
+                          className="btn btn-sm"
+                          style={{
+                            backgroundColor: 'transparent',
+                            color: '#475569',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.75rem',
+                            padding: '0.45rem 0.6rem',
+                          }}
+                        >
+                          Start Over
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -449,27 +632,43 @@ const CitizenAssistantWidget = () => {
             {isLoading && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
                 <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
-                <span>AI Guide is preparing advice...</span>
+                <span>Analyzing your issue...</span>
               </div>
             )}
 
-            {/* Error Message */}
+            {/* Error Message & Fallback */}
             {error && (
               <div
                 style={{
-                  padding: '0.6rem 0.8rem',
+                  padding: '0.75rem 0.85rem',
                   backgroundColor: '#fef2f2',
                   border: '1px solid #fecaca',
                   borderRadius: 'var(--radius-md)',
                   color: '#991b1b',
                   fontSize: '0.8rem',
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
                 }}
               >
-                <AlertCircle size={15} style={{ flexShrink: 0 }} />
-                <span>{error}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                  <span>{error}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleManualSubmitRedirect}
+                  className="btn btn-sm"
+                  style={{
+                    alignSelf: 'flex-start',
+                    backgroundColor: '#dc2626',
+                    color: 'white',
+                    fontSize: '0.75rem',
+                    padding: '0.3rem 0.6rem',
+                  }}
+                >
+                  Submit Grievance Manually
+                </button>
               </div>
             )}
 
@@ -493,7 +692,7 @@ const CitizenAssistantWidget = () => {
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => handleSendMessage(promptText.replace(/^.+?\s/, ''))}
+                  onClick={() => handleSendMessage(promptText)}
                   style={{
                     backgroundColor: 'var(--bg-subtle)',
                     border: '1px solid var(--border-subtle)',
@@ -556,6 +755,92 @@ const CitizenAssistantWidget = () => {
             >
               <Send size={15} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Auth Modal when unauthenticated citizen tries to create grievance */}
+      {showAuthModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1700,
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderRadius: 'var(--radius-lg)',
+              maxWidth: '420px',
+              width: '100%',
+              padding: '1.5rem',
+              boxShadow: 'var(--shadow-xl)',
+              textAlign: 'center',
+            }}
+          >
+            <div
+              style={{
+                width: '3rem',
+                height: '3rem',
+                borderRadius: '50%',
+                backgroundColor: '#e0f2fe',
+                color: '#0284c7',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '1rem',
+              }}
+            >
+              <LogIn size={24} />
+            </div>
+
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+              Sign In to Submit Your Grievance
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+              Your grievance draft has been saved. Please sign in or create a citizen account to officially submit and track your complaint.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <button
+                type="button"
+                onClick={handleProceedToLogin}
+                className="btn btn-primary"
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+              >
+                <LogIn size={16} />
+                <span>Sign In as Citizen</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleProceedToRegister}
+                className="btn btn-outline"
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+              >
+                <UserPlus size={16} />
+                <span>Register as Citizen</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAuthModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.8rem',
+                  marginTop: '0.5rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel & Continue Chat
+              </button>
+            </div>
           </div>
         </div>
       )}

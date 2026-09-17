@@ -605,6 +605,29 @@ Return only valid JSON matching this schema:
   }
 };
 
+const CONTROLLED_DEPARTMENTS = [
+  'Public Works & Roads',
+  'Water Supply & Sanitation',
+  'Electricity & Power',
+  'Waste Management',
+  'Drainage & Sewerage',
+  'Street Lighting',
+  'Public Safety',
+  'Environment',
+];
+
+const CATEGORY_TO_DEPARTMENT_MAP = {
+  Roads: 'Public Works & Roads',
+  'Water Supply': 'Water Supply & Sanitation',
+  Electricity: 'Electricity & Power',
+  'Waste Management': 'Waste Management',
+  Drainage: 'Drainage & Sewerage',
+  'Street Lighting': 'Street Lighting',
+  'Public Safety': 'Public Safety',
+  Environment: 'Environment',
+  Other: 'General Administration',
+};
+
 /**
  * Validate and sanitize Citizen Assistant response
  */
@@ -622,106 +645,364 @@ const validateAssistantResponse = (parsed) => {
     return null;
   }
 
-  let suggestedCategory = null;
-  if (parsed.suggestedCategory && typeof parsed.suggestedCategory === 'string') {
+  let category = null;
+  if (parsed.category && typeof parsed.category === 'string') {
+    const matched = ALLOWED_CATEGORIES.find(
+      (c) => c.toLowerCase() === parsed.category.trim().toLowerCase()
+    );
+    category = matched || null;
+  } else if (parsed.suggestedCategory && typeof parsed.suggestedCategory === 'string') {
     const matched = ALLOWED_CATEGORIES.find(
       (c) => c.toLowerCase() === parsed.suggestedCategory.trim().toLowerCase()
     );
-    suggestedCategory = matched || null;
+    category = matched || null;
   }
 
-  let draftGrievance = null;
+  let department = null;
+  if (parsed.department && typeof parsed.department === 'string') {
+    const matchedDept = CONTROLLED_DEPARTMENTS.find(
+      (d) => d.toLowerCase() === parsed.department.trim().toLowerCase()
+    );
+    department = matchedDept || (category ? CATEGORY_TO_DEPARTMENT_MAP[category] : 'General Administration');
+  } else if (category) {
+    department = CATEGORY_TO_DEPARTMENT_MAP[category] || 'General Administration';
+  }
+
+  let priority = 'Medium';
+  if (parsed.priority && typeof parsed.priority === 'string') {
+    const matchedP = ALLOWED_PRIORITIES.find(
+      (p) => p.toLowerCase() === parsed.priority.trim().toLowerCase()
+    );
+    priority = matchedP || 'Medium';
+  }
+
+  const priorityReason =
+    typeof parsed.priorityReason === 'string' && parsed.priorityReason.trim()
+      ? parsed.priorityReason.trim()
+      : null;
+
+  const location =
+    typeof parsed.location === 'string' && parsed.location.trim()
+      ? parsed.location.trim()
+      : null;
+
+  const summary =
+    typeof parsed.summary === 'string' && parsed.summary.trim()
+      ? parsed.summary.trim()
+      : null;
+
+  const suggestedTitle =
+    typeof parsed.suggestedTitle === 'string' && parsed.suggestedTitle.trim()
+      ? parsed.suggestedTitle.trim()
+      : null;
+
+  const suggestedAction =
+    typeof parsed.suggestedAction === 'string' && parsed.suggestedAction.trim()
+      ? parsed.suggestedAction.trim()
+      : null;
+
+  const missingInformation = Array.isArray(parsed.missingInformation)
+    ? parsed.missingInformation.filter((item) => typeof item === 'string' && item.trim())
+    : [];
+
+  let draft = null;
+  const rawDraft = parsed.draft || parsed.draftGrievance;
   if (
-    parsed.draftGrievance &&
-    typeof parsed.draftGrievance === 'object' &&
-    typeof parsed.draftGrievance.title === 'string' &&
-    parsed.draftGrievance.title.trim() &&
-    typeof parsed.draftGrievance.description === 'string' &&
-    parsed.draftGrievance.description.trim()
+    rawDraft &&
+    typeof rawDraft === 'object' &&
+    typeof rawDraft.title === 'string' &&
+    rawDraft.title.trim() &&
+    typeof rawDraft.description === 'string' &&
+    rawDraft.description.trim()
   ) {
-    let cat = parsed.draftGrievance.category;
+    let cat = rawDraft.category;
     const matchedCat = ALLOWED_CATEGORIES.find(
       (c) => c.toLowerCase() === (cat || '').trim().toLowerCase()
     );
-    draftGrievance = {
-      title: parsed.draftGrievance.title.trim().slice(0, 150),
-      description: parsed.draftGrievance.description.trim().slice(0, 3000),
-      category: matchedCat || suggestedCategory || 'Other',
+    const draftCategory = matchedCat || category || 'Other';
+    const draftDept = rawDraft.department || CATEGORY_TO_DEPARTMENT_MAP[draftCategory] || department || 'General Administration';
+    const draftPriority = ALLOWED_PRIORITIES.includes(rawDraft.priority) ? rawDraft.priority : priority;
+
+    draft = {
+      title: rawDraft.title.trim().slice(0, 150),
+      description: rawDraft.description.trim().slice(0, 3000),
+      category: draftCategory,
+      department: draftDept,
+      priority: draftPriority,
+      location: rawDraft.location || location || '',
+      suggestedAction: rawDraft.suggestedAction || suggestedAction || '',
     };
   }
 
+  const readyForDraft = Boolean(parsed.readyForDraft || parsed.readyToDraft || draft);
+
   return {
     reply,
-    suggestedCategory: suggestedCategory || (draftGrievance ? draftGrievance.category : null),
-    draftGrievance,
-    readyToDraft: Boolean(parsed.readyToDraft || draftGrievance),
+    intent: parsed.intent || 'grievance_assistance',
+    category,
+    department,
+    priority,
+    priorityReason,
+    location,
+    summary,
+    missingInformation,
+    suggestedTitle,
+    suggestedAction,
+    readyForDraft,
+    draft,
+    // Backward compatibility fields
+    suggestedCategory: category,
+    draftGrievance: draft
+      ? {
+          title: draft.title,
+          description: draft.description,
+          category: draft.category,
+          department: draft.department,
+          priority: draft.priority,
+          location: draft.location,
+        }
+      : null,
+    readyToDraft: readyForDraft,
   };
 };
 
 /**
- * Rule-based fallback assistant for zero-dependency resilience
+ * Intelligent deterministic assistant with security guardrails and conversational state
  */
 const fallbackAssistantResponse = (userMessage = '', conversationHistory = []) => {
-  const content = `${conversationHistory.map((m) => m.content).join(' ')} ${userMessage}`.toLowerCase();
+  const fullConversation = [...conversationHistory.map((m) => m.content), userMessage].join(' ');
+  const cleanMsg = (userMessage || '').trim();
+  const lowerMsg = cleanMsg.toLowerCase();
+  const lowerHistory = fullConversation.toLowerCase();
 
-  let category = 'Other';
-  let issueSummary = 'Civic issue reported by citizen';
-  let advice = '';
-
-  if (/garbage|waste|trash|dump|dustbin|litter|sanitary|debris/i.test(content)) {
-    category = 'Waste Management';
-    issueSummary = 'Uncollected garbage and sanitation hazard';
-    advice = 'To report waste issues effectively, please provide the exact spot (e.g., street name, near college gate), how long it has been accumulating, and attach a photo if possible.';
-  } else if (/pothole|road|asphalt|tar|crater|pavement|footpath|divider/i.test(content)) {
-    category = 'Roads';
-    issueSummary = 'Road surface damage / hazardous pothole';
-    advice = 'For road maintenance reports, please specify the exact landmark or street coordinates and mention if it is causing vehicular skids or traffic disruptions.';
-  } else if (/water|pipeline|leak|burst|drinking water|supply|tank|tap/i.test(content)) {
-    category = 'Water Supply';
-    issueSummary = 'Water supply disruption / pipeline leakage';
-    advice = 'Please mention if there is clean water wastage or pressure loss, and include the street name and nearby landmark.';
-  } else if (/light|street light|darkness|pole|lamp|bulb|illumination/i.test(content)) {
-    category = 'Street Lighting';
-    issueSummary = 'Non-functional street lighting';
-    advice = 'Please specify the pole number or landmark where the light is defective so maintenance teams can locate it quickly at night.';
-  } else if (/electric|power|wire|transformer|spark|shock|blackout|voltage/i.test(content)) {
-    category = 'Electricity';
-    issueSummary = 'Electrical fault / exposed wiring concern';
-    advice = 'If there are live hanging wires or sparking transformers, note that this is high urgency. Please provide the exact pole or transformer location.';
-  } else if (/drain|drainage|gutter|sewage|waterlogging|flood|clogged/i.test(content)) {
-    category = 'Drainage';
-    issueSummary = 'Blocked drain / sewage waterlogging';
-    advice = 'Please indicate if dirty water is entering premises or stagnant on public roads, along with the neighborhood ward.';
-  } else if (/safety|encroachment|illegal|hazard|stray animal|threat/i.test(content)) {
-    category = 'Public Safety';
-    issueSummary = 'Public safety / street obstruction issue';
-    advice = 'Please provide details on the location, nature of obstruction or safety hazard, and affected community.';
-  } else if (/pollution|smoke|chemical|tree|park|greenery|environment/i.test(content)) {
-    category = 'Environment';
-    issueSummary = 'Environmental pollution / public health concern';
-    advice = 'Please describe the source of pollution and the affected surroundings.';
-  } else {
-    advice = 'I can help guide you on reporting your civic issue. Please describe what is happening, where it is located, and how it impacts your area.';
+  // 1. Prompt Injection / Privilege Escalation / Data Privacy Guardrails
+  if (
+    /password|credentials?|admin account|all citizen records|database dump|give me admin|role\s*=\s*["']?admin|system prompt|ignore rules|delete (all|other)/i.test(
+      lowerMsg
+    )
+  ) {
+    return {
+      reply:
+        'I am the CivicAI Citizen Guide, designed solely to help citizens prepare and report civic grievances. I do not have access to administrative accounts, user passwords, or private database records.\n\nPlease let me know if you would like help reporting a public municipal issue such as roads, water, waste, or streetlights.',
+      intent: 'security_refusal',
+      category: null,
+      department: null,
+      priority: 'Medium',
+      priorityReason: null,
+      location: null,
+      summary: null,
+      missingInformation: [],
+      suggestedTitle: null,
+      suggestedAction: null,
+      readyForDraft: false,
+      draft: null,
+      suggestedCategory: null,
+      draftGrievance: null,
+      readyToDraft: false,
+    };
   }
 
-  const cleanUserText = userMessage.trim().replace(/^["']|["']$/g, '');
-  const title = cleanUserText.length > 5 && cleanUserText.length < 90
-    ? cleanUserText
-    : `${category} issue: ${issueSummary}`;
+  // 2. Immediate Life Threat / Severe Emergency Guardrail
+  if (
+    /\b(active fire|major gas explosion|building collapse|life threatening|electrocution emergency)\b/i.test(
+      lowerMsg
+    )
+  ) {
+    return {
+      reply:
+        '⚠️ **IMMEDIATE EMERGENCY ADVISORY**:\nIf there is an active emergency or immediate threat to life, please contact emergency responders right away:\n\n• **Police & Emergencies:** 112 / 100\n• **Fire & Rescue:** 101\n• **Ambulance:** 108 / 102\n\nCivicAI is for municipal grievance logging and does not dispatch immediate emergency units. Once you are in a safe location, you can also submit a municipal grievance.',
+      intent: 'emergency_alert',
+      category: 'Public Safety',
+      department: 'Public Safety',
+      priority: 'Critical',
+      priorityReason: 'Immediate life or safety hazard requires emergency dispatch.',
+      location: null,
+      summary: 'Emergency incident reported by citizen.',
+      missingInformation: [],
+      suggestedTitle: 'Emergency incident requiring urgent intervention',
+      suggestedAction: 'Notify emergency responders and municipal disaster desk.',
+      readyForDraft: false,
+      draft: null,
+      suggestedCategory: 'Public Safety',
+      draftGrievance: null,
+      readyToDraft: false,
+    };
+  }
 
-  const description = cleanUserText.length > 20
-    ? cleanUserText
-    : `${issueSummary}. Reported by citizen for municipal inspection and corrective redressal.`;
+  // 3. Issue Classification across Conversation
+  let category = 'Other';
+  let department = 'General Administration';
+  let issueName = 'civic issue';
+  let defaultPriority = 'Medium';
+  let priorityReason = 'Standard municipal maintenance review required.';
 
-  const reply = `This appears to be a **${category}** issue. I can help guide you in reporting it to the municipal department.\n\n${advice}\n\nWould you like me to pre-fill your grievance form with this information?`;
+  if (/water|pipeline|leak|burst|drinking water|water supply|tank|tap|pressure|pipe/i.test(lowerHistory)) {
+    category = 'Water Supply';
+    department = 'Water Supply & Sanitation';
+    issueName = 'water pipeline leakage / supply issue';
+    defaultPriority = /broken|rupture|burst|leak|flooding|since yesterday|wasted|drinking|pipeline|pipe/i.test(lowerHistory) ? 'High' : 'Medium';
+    priorityReason = defaultPriority === 'High'
+      ? 'A leaking water pipeline can cause clean water loss and may create a road safety or sanitation issue.'
+      : 'Water supply irregularity reported for engineering inspection.';
+  } else if (/garbage|waste|trash|dump|dustbin|litter|sanitary|debris|overflowing bin|illegal dumping/i.test(lowerHistory)) {
+    category = 'Waste Management';
+    department = 'Waste Management';
+    issueName = 'uncollected garbage and waste accumulation';
+    defaultPriority = /market|hospital|school|days|huge|rotting|smell/i.test(lowerHistory) ? 'High' : 'Medium';
+    priorityReason = defaultPriority === 'High'
+      ? 'Uncollected waste in public areas creates sanitation risks, odor nuisance, and public health concerns.'
+      : 'Scheduled sanitation and collection service required.';
+  } else if (/drain|drainage|gutter|sewage|waterlogging|flood|clogged|blocked drain|sewer/i.test(lowerHistory)) {
+    category = 'Drainage';
+    department = 'Drainage & Sewerage';
+    issueName = 'blocked drain / sewage waterlogging';
+    defaultPriority = /overflow|flood|entering|monsoon|heavy|sewage/i.test(lowerHistory) ? 'High' : 'Medium';
+    priorityReason = defaultPriority === 'High'
+      ? 'Blocked drainage causing sewage overflow creates immediate contamination and waterlogging risks.'
+      : 'Drainage desilting and channel clearance required.';
+  } else if (/street light|streetlight|dark street|darkness|lamp|pole light|illumination/i.test(lowerHistory)) {
+    category = 'Street Lighting';
+    department = 'Street Lighting';
+    issueName = 'non-functional street lighting';
+    defaultPriority = /entire|dark|women|safety|crime|crossing/i.test(lowerHistory) ? 'High' : 'Medium';
+    priorityReason = defaultPriority === 'High'
+      ? 'Complete street darkness affects nighttime pedestrian safety and public security.'
+      : 'Routine lamp or photocell replacement required.';
+  } else if (/electric|power|wire|transformer|spark|shock|blackout|voltage|exposed wire/i.test(lowerHistory)) {
+    category = 'Electricity';
+    department = 'Electricity & Power';
+    issueName = 'electrical infrastructure / exposed wiring issue';
+    defaultPriority = /spark|shock|live wire|hanging|pole/i.test(lowerHistory) ? 'Critical' : 'High';
+    priorityReason = defaultPriority === 'Critical'
+      ? 'Exposed electrical wiring or sparking infrastructure poses an immediate electrocution hazard.'
+      : 'Power distribution fault requires authorized utility intervention.';
+  } else if (/pothole|damaged road|broken road|road crack|road repair|unsafe road|crater|asphalt|tar|pavement|footpath|divider|road/i.test(lowerHistory)) {
+    category = 'Roads';
+    department = 'Public Works & Roads';
+    issueName = 'road damage / pothole hazard';
+    defaultPriority = /huge|deep|main road|highway|accident|danger|major/i.test(lowerHistory) ? 'High' : 'Medium';
+    priorityReason = defaultPriority === 'High'
+      ? 'A significant road defect or pothole on a public roadway creates traffic disruption and vehicle accident risks.'
+      : 'Road surface irregularity requires patch repair and site inspection.';
+  } else if (/safety|encroachment|hazard|stray animal|threat|unsafe/i.test(lowerHistory)) {
+    category = 'Public Safety';
+    department = 'Public Safety';
+    issueName = 'public hazard / safety obstruction';
+    defaultPriority = 'Medium';
+    priorityReason = 'Public obstruction or hazard reported for enforcement review.';
+  } else if (/pollution|smoke|chemical|tree|park|greenery|environment/i.test(lowerHistory)) {
+    category = 'Environment';
+    department = 'Environment';
+    issueName = 'environmental quality / pollution issue';
+    defaultPriority = 'Medium';
+    priorityReason = 'Environmental concern requires inspection and compliance verification.';
+  }
+
+
+  // 4. Conversational Location Extraction
+  let extractedLocation = '';
+  const locMatch = fullConversation.match(
+    /(?:near|at|outside|opposite|in front of|in|on|behind)\s+([A-Za-z0-9\s,.-]{3,50})(?=[.?!,\n]|$)/i
+  );
+  if (locMatch && locMatch[0]) {
+    extractedLocation = locMatch[0].trim();
+  } else if (/saheed nagar|nayapalli|patia|chandrasekharpur|dhule|market|college|school|hospital|station/i.test(fullConversation)) {
+    const landmarkMatch = fullConversation.match(
+      /[A-Za-z0-9\s]{2,30}(?:college|school|hospital|station|market|gate|chowk|road|nagar|palli|vihar|area)/i
+    );
+    if (landmarkMatch) {
+      extractedLocation = landmarkMatch[0].trim();
+    }
+  }
+
+  // 5. Determine whether we need follow-up questions or have enough context to generate a draft
+  const isShortInput = cleanMsg.split(/\s+/).length < 4 && !extractedLocation && conversationHistory.length === 0;
+
+  if (isShortInput) {
+    // Generate helpful follow-up questions based on the identified category
+    let followUpBullets = '';
+    if (category === 'Water Supply') {
+      followUpBullets = `• Where is the broken pipeline or leak located (landmark/street)?\n• Is water currently leaking or being wasted?\n• Is the issue affecting nearby homes or roads?\n• How long has the problem existed?\n• Do you have a photo of the issue?`;
+    } else if (category === 'Roads') {
+      followUpBullets = `• Where is the damaged road or pothole located (street name / landmark)?\n• Is it causing vehicle skids or blocking traffic?\n• How large or deep is the pothole?\n• Do you have a photo of the road condition?`;
+    } else if (category === 'Waste Management') {
+      followUpBullets = `• Where is the garbage accumulating (street / market / landmark)?\n• How many days has the waste been uncollected?\n• Is it overflowing onto the roadway or causing severe odor?\n• Do you have a photo of the waste pile?`;
+    } else if (category === 'Street Lighting') {
+      followUpBullets = `• Where is the non-working streetlight located (street / pole number / landmark)?\n• Is a single light or the entire street dark?\n• How long has the light been out?`;
+    } else if (category === 'Drainage') {
+      followUpBullets = `• Where is the blocked drain or sewage overflow located?\n• Is dirty water entering homes or flooding the road?\n• How long has this been occurring?`;
+    } else if (category === 'Electricity') {
+      followUpBullets = `• Where is the electrical issue located (pole number / landmark)?\n• Are there exposed wires or sparks?\n• Are nearby residences without power?`;
+    } else {
+      followUpBullets = `• Where is the issue located (landmark or ward)?\n• What exactly happened and how long has it existed?\n• How does it impact your local neighborhood?`;
+    }
+
+    const reply = `I can help you report this **${category}** issue to **${department}**.\n\nA few details will help route the complaint correctly:\n\n${followUpBullets}`;
+
+    return {
+      reply,
+      intent: 'grievance_assistance',
+      category,
+      department,
+      priority: defaultPriority,
+      priorityReason,
+      location: null,
+      summary: `Initial report for ${issueName}`,
+      missingInformation: ['Exact location / landmark', 'Severity and duration details', 'Photo evidence if available'],
+      suggestedTitle: `${category} issue reporting`,
+      suggestedAction: `Collect location and impact details to submit to ${department}.`,
+      readyForDraft: false,
+      draft: null,
+      suggestedCategory: category,
+      draftGrievance: null,
+      readyToDraft: false,
+    };
+  }
+
+  // 6. Full context exists -> Generate structured Draft Grievance
+  const locationLabel = extractedLocation || 'Specified local municipal area';
+  const suggestedTitle = `${category === 'Roads' ? 'Hazardous road pothole' : category === 'Water Supply' ? 'Water pipeline leakage' : category === 'Waste Management' ? 'Uncollected waste accumulation' : category === 'Street Lighting' ? 'Street light not functioning' : category === 'Drainage' ? 'Blocked drain and sewage overflow' : category === 'Electricity' ? 'Electrical infrastructure defect' : `${category} issue`} ${locationLabel.toLowerCase().startsWith('near') || locationLabel.toLowerCase().startsWith('on') ? locationLabel : `near ${locationLabel}`}`;
+
+  const description = `A ${issueName} has been reported ${locationLabel.toLowerCase().startsWith('near') || locationLabel.toLowerCase().startsWith('on') ? locationLabel : `near ${locationLabel}`}. ${
+    lowerHistory.includes('yesterday') ? 'The problem has been persisting since yesterday.' : lowerHistory.includes('days') ? 'The issue has been continuing for several days.' : 'This condition is actively affecting local residents and commuters.'
+  } Prompt inspection and repair are requested to restore public safety and municipal services.`;
+
+  const suggestedAction = `Dispatch ${department} field inspection crew to ${locationLabel} to assess site conditions and complete corrective repairs.`;
+
+  const draft = {
+    title: suggestedTitle.slice(0, 150),
+    description: description.slice(0, 3000),
+    category,
+    department,
+    priority: defaultPriority,
+    location: locationLabel,
+    suggestedAction,
+  };
+
+  const reply = `Based on your description:\n\n**Category:**\n${category}\n\n**Department:**\n${department}\n\n**Suggested Priority:**\n${defaultPriority}\n\n**Reason:**\n${priorityReason}\n\n**Suggested Title:**\n"${suggestedTitle}"\n\nWould you like me to prepare a grievance draft?`;
 
   return {
     reply,
+    intent: 'grievance_assistance',
+    category,
+    department,
+    priority: defaultPriority,
+    priorityReason,
+    location: locationLabel,
+    summary: description,
+    missingInformation: [],
+    suggestedTitle,
+    suggestedAction,
+    readyForDraft: true,
+    draft,
     suggestedCategory: category,
     draftGrievance: {
-      title,
-      description,
-      category,
+      title: draft.title,
+      description: draft.description,
+      category: draft.category,
+      department: draft.department,
+      priority: draft.priority,
+      location: draft.location,
     },
     readyToDraft: true,
   };
@@ -733,66 +1014,88 @@ const fallbackAssistantResponse = (userMessage = '', conversationHistory = []) =
 const chatWithCitizenAssistant = async ({ messages = [], user = null }) => {
   const lastMessage = messages.length > 0 ? promptText(messages[messages.length - 1].content, 2000) : '';
 
+  // Check for immediate security / injection attempts
+  if (
+    /password|credentials?|admin account|all citizen records|database dump|give me admin|role\s*=\s*["']?admin|system prompt|ignore rules/i.test(
+      lastMessage
+    )
+  ) {
+    return fallbackAssistantResponse(lastMessage, messages.slice(0, -1));
+  }
+
   const prompt = `
-You are CivicAI Assistant, an intelligent, empathetic civic guide helping citizens understand how to report public grievances to local municipal authorities.
+You are the CivicAI Citizen Guide, an intelligent, empathetic civic assistant helping citizens understand, structure, and prepare public municipal grievances.
 
 CONVERSATION HISTORY:
-${JSON.stringify(messages.slice(-6).map((m) => ({ role: m.role, content: promptText(m.content, 2000) })))}
+${JSON.stringify(messages.slice(-8).map((m) => ({ role: m.role, content: promptText(m.content, 2000) })))}
 
-ALLOWED GRIEVANCE CATEGORIES:
-- Roads
-- Waste Management
-- Water Supply
-- Electricity
-- Street Lighting
-- Drainage
-- Public Safety
-- Environment
-- Other
+ALLOWED CATEGORIES & CONTROLLED DEPARTMENTS:
+- Roads -> Public Works & Roads
+- Water Supply -> Water Supply & Sanitation
+- Waste Management -> Waste Management
+- Drainage -> Drainage & Sewerage
+- Street Lighting -> Street Lighting
+- Electricity -> Electricity & Power
+- Public Safety -> Public Safety
+- Environment -> Environment
+- Other -> General Administration
+
+PRIORITY LEVELS (Recommendations only):
+- Low: Minor issue with limited impact.
+- Medium: Disruption affecting residents without immediate hazard.
+- High: Affects essential services, multiple residents, or road/sanitation hazard.
+- Critical: Immediate serious public safety, health, or essential infrastructure risk.
 
 INSTRUCTIONS:
-1. Understand the citizen's civic problem (e.g. potholes, uncollected garbage, water leaks, dark streets, broken drains).
-2. Explain which category fits best from the Allowed Categories list.
-3. Explain what information makes a strong complaint (e.g. exact street address/landmark, description of disruption or safety hazard, photo evidence).
-4. Summarize their complaint into a ready-to-use title and description for their grievance draft.
-5. Set readyToDraft to true when there is enough context to draft a grievance.
-
-STRICT SAFETY & POLICY GUARDRAILS:
-- You are an AI informational guide only. You are NOT a government authority, police officer, or municipal executive.
-- Do NOT provide legal advice.
-- Do NOT guarantee or promise resolution timeframes or outcomes.
-- Do NOT access, reference, or expose any private citizen records or another user's complaints.
-- Remind the citizen that they must review and submit the grievance form manually.
+1. Understand the citizen's civic problem.
+2. If initial issue is brief or lacks location (e.g. "broken pipeline"), ask 2-3 specific follow-up questions (Location, leakage/severity, duration, photo). Set readyForDraft to false.
+3. Once location or sufficient details are provided (e.g. "Near Dhule college gate. Water is leaking onto the road since yesterday."), suggest Category, Department, Suggested Priority with reasoning, Suggested Title, and complete Draft. Set readyForDraft to true.
+4. STRICT GUARDRAILS: You are an advisory guide only, not a government authority. Do not promise resolution times. Do not access other citizens' data. Never submit grievances automatically.
 
 RETURN ONLY VALID JSON MATCHING THIS EXACT SCHEMA:
 {
-  "reply": "Friendly, helpful conversational response to the citizen",
-  "suggestedCategory": "One from Allowed Categories or null",
-  "draftGrievance": {
-    "title": "Concise issue title (max 100 chars)",
-    "description": "Clear detailed description for the grievance report",
-    "category": "One from Allowed Categories"
-  } | null,
-  "readyToDraft": true | false
+  "reply": "Clear, friendly conversational response with markdown bolding for category and department",
+  "intent": "grievance_assistance",
+  "category": "One from Allowed Categories",
+  "department": "One from Controlled Departments",
+  "priority": "Low | Medium | High | Critical",
+  "priorityReason": "Brief explanation of why this priority is recommended",
+  "location": "Conversational location or null",
+  "summary": "Brief summary of the issue",
+  "missingInformation": ["List of missing details if any"],
+  "suggestedTitle": "Concise grievance title (max 100 chars)",
+  "suggestedAction": "Recommended corrective action for the department",
+  "readyForDraft": true | false,
+  "draft": {
+    "title": "Title",
+    "description": "Full detailed description",
+    "category": "Category",
+    "department": "Department",
+    "priority": "Priority",
+    "location": "Location",
+    "suggestedAction": "Action"
+  } | null
 }
 `;
 
   try {
     const rawText = await callLLMAPI(prompt);
-    const parsed = extractJSON(rawText);
-    const validated = validateAssistantResponse(parsed);
+    if (rawText) {
+      const parsed = extractJSON(rawText);
+      const validated = validateAssistantResponse(parsed);
 
-    if (validated) {
-      return {
-        ...validated,
-        source: 'llm',
-      };
+      if (validated) {
+        return {
+          ...validated,
+          source: 'llm',
+        };
+      }
     }
   } catch (error) {
     console.warn('[CivicAI Service] Citizen Assistant LLM API unavailable, using fallback:', error.message);
   }
 
-  // Use resilient fallback
+  // Use resilient deterministic civic engine
   const fallback = fallbackAssistantResponse(lastMessage, messages.slice(0, -1));
   return {
     ...fallback,

@@ -47,13 +47,15 @@ const CreateGrievancePage = () => {
     category: prefill?.category && CATEGORIES.some((c) => c.id === prefill.category)
       ? prefill.category
       : 'Roads',
-    priority: 'Medium',
+    priority: prefill?.priority && ['Low', 'Medium', 'High', 'Critical'].includes(prefill.priority)
+      ? prefill.priority
+      : 'Medium',
     location: {
-      address: '',
-      landmark: '',
-      ward: 'Ward 14 (Saheed Nagar)',
-      city: 'Bhubaneswar',
-      pincode: '751007',
+      address: prefill?.location?.address || (typeof prefill?.location === 'string' ? prefill.location : ''),
+      landmark: prefill?.location?.landmark || (typeof prefill?.landmark === 'string' ? prefill.landmark : ''),
+      ward: prefill?.location?.ward || 'Ward 14 (Saheed Nagar)',
+      city: prefill?.location?.city || 'Bhubaneswar',
+      pincode: prefill?.location?.pincode || '751007',
       latitude: null,
       longitude: null,
     },
