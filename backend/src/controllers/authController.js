@@ -1,5 +1,21 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+
+const CONTROLLED_DEPARTMENTS = [
+  'Public Works & Roads',
+  'Water Supply & Sanitation',
+  'Electricity & Power',
+  'Waste Management',
+  'Drainage & Sewerage',
+  'Street Lighting',
+  'Public Safety',
+  'Environment',
+];
+
+const isValidEmail = (email) => {
+  return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,})+$/.test(email);
+};
+
 const getJwtSecret = () => {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
     throw new Error('JWT_SECRET must be configured with at least 32 characters.');
@@ -20,11 +36,11 @@ const generateToken = (id) => {
 };
 
 // @desc    Register a new citizen
-// @route   POST /api/auth/register/citizen (and POST /api/auth/register)
+// @route   POST /api/auth/register (and POST /api/auth/register/citizen)
 // @access  Public
 const registerCitizen = async (req, res, next) => {
   try {
-    const { name, email, password, phone, ward, city, address } = req.body;
+    const { name, email, password, confirmPassword, phone, ward, city, address } = req.body;
 
     if (
       !name ||
@@ -41,17 +57,31 @@ const registerCitizen = async (req, res, next) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide name, email, and password (minimum 8 characters)',
+        message: 'Please provide name, email, and password (minimum 8 characters).',
+      });
+    }
+
+    if (confirmPassword !== undefined && password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Passwords do not match.',
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!isValidEmail(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address.',
       });
     }
 
     // Check if user already exists
-    const normalizedEmail = email.trim().toLowerCase();
     const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
       return res.status(400).json({
         success: false,
-        message: 'A user with this email address already exists',
+        message: 'Email is already registered.',
       });
     }
 
@@ -61,7 +91,7 @@ const registerCitizen = async (req, res, next) => {
       pincode: address?.pincode || '',
     };
 
-    // Citizens register publicly. Security invariant: role is always citizen
+    // Security Invariant: Public citizen registration ALWAYS creates role: 'citizen', ignoring any client role
     const user = await User.create({
       name: name.trim(),
       email: normalizedEmail,
@@ -71,13 +101,14 @@ const registerCitizen = async (req, res, next) => {
       phone: typeof phone === 'string' ? phone.trim() : '',
       address: userAddress,
       status: 'active',
+      isActive: true,
     });
 
     const token = generateToken(user._id);
 
     res.status(201).json({
       success: true,
-      message: 'Citizen account registered successfully',
+      message: 'Citizen account registered successfully.',
       token,
       user: {
         id: user._id,
@@ -95,15 +126,16 @@ const registerCitizen = async (req, res, next) => {
   }
 };
 
-// @desc    Register a new Field Officer with official registration code
-// @route   POST /api/auth/register/officer
-// @access  Public (Protected by Officer Registration Code)
+// @desc    Register a new Field Officer
+// @route   POST /api/auth/register-officer (and POST /api/auth/register/officer)
+// @access  Public
 const registerOfficer = async (req, res, next) => {
   try {
     const {
       name,
       email,
       password,
+      confirmPassword,
       phone,
       employeeId,
       department,
@@ -111,7 +143,6 @@ const registerOfficer = async (req, res, next) => {
       designation,
       ward,
       city,
-      registrationCode,
     } = req.body;
 
     if (
@@ -134,45 +165,64 @@ const registerOfficer = async (req, res, next) => {
       });
     }
 
-    // Verify official officer registration code
-    const validOfficerCode = process.env.OFFICER_REGISTRATION_CODE || 'OFFICER-CIVIC-2026';
-    if (!registrationCode || registrationCode.trim() !== validOfficerCode) {
+    if (confirmPassword !== undefined && password !== confirmPassword) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid officer registration code. Please provide an authorized official code.',
+        message: 'Passwords do not match.',
       });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    if (!isValidEmail(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address.',
+      });
+    }
+
+    const normalizedEmpId = employeeId.trim().toUpperCase();
+
+    // Check unique email
     const existingEmail = await User.findOne({ email: normalizedEmail });
     if (existingEmail) {
       return res.status(400).json({
         success: false,
-        message: 'An account with this email address already exists.',
+        message: 'Email is already registered.',
       });
     }
 
-    const existingEmp = await User.findOne({ employeeId: employeeId.trim(), role: 'officer' });
+    // Check unique employee ID
+    const existingEmp = await User.findOne({ employeeId: normalizedEmpId });
     if (existingEmp) {
       return res.status(400).json({
         success: false,
-        message: 'An officer with this Employee ID already exists.',
+        message: 'Employee ID is already registered.',
       });
     }
 
+    // Validate controlled departments
+    const trimmedDept = department.trim();
+    if (!CONTROLLED_DEPARTMENTS.includes(trimmedDept) && trimmedDept !== 'General Administration') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a valid municipal department.',
+      });
+    }
+
+    // Security Invariant: Role is strictly forced to 'officer'
     const officer = await User.create({
       name: name.trim(),
       email: normalizedEmail,
       password,
       role: 'officer',
-      department: department.trim(),
-      officerType: officerType ? officerType.trim() : 'Field Officer',
-      designation: designation ? designation.trim() : 'Field Officer',
-      employeeId: employeeId.trim(),
-      phone: phone ? phone.trim() : '',
+      department: trimmedDept,
+      officerType: officerType && typeof officerType === 'string' ? officerType.trim() : 'Field Officer',
+      designation: designation && typeof designation === 'string' && designation.trim() ? designation.trim() : 'Field Officer',
+      employeeId: normalizedEmpId,
+      phone: typeof phone === 'string' ? phone.trim() : '',
       address: {
-        city: city ? city.trim() : 'Bhubaneswar',
-        ward: ward ? ward.trim() : '',
+        city: typeof city === 'string' && city.trim() ? city.trim() : 'Bhubaneswar',
+        ward: typeof ward === 'string' ? ward.trim() : '',
       },
       status: 'active',
       isActive: true,
@@ -204,7 +254,7 @@ const registerOfficer = async (req, res, next) => {
 };
 
 // @desc    Register a new Administrator with administrator setup code
-// @route   POST /api/auth/register/admin
+// @route   POST /api/auth/register-admin (and POST /api/auth/register/admin)
 // @access  Public (Protected by Administrator Setup Code)
 const registerAdmin = async (req, res, next) => {
   try {
@@ -212,6 +262,7 @@ const registerAdmin = async (req, res, next) => {
       name,
       email,
       password,
+      confirmPassword,
       phone,
       adminId,
       administratorId,
@@ -236,53 +287,53 @@ const registerAdmin = async (req, res, next) => {
       });
     }
 
-    // 1. Verify administrator setup code configuration
-    const expectedSetupCode = process.env.ADMIN_SETUP_CODE || process.env.ADMIN_REGISTRATION_CODE;
-    if (!expectedSetupCode) {
-      return res.status(500).json({
-        success: false,
-        message: 'Administrator setup is not configured.',
-      });
-    }
-
-    // 2. Validate submitted setup code
-    const submittedCode = setupCode !== undefined ? setupCode : registrationCode;
-    if (!submittedCode || typeof submittedCode !== 'string' || !submittedCode.trim()) {
+    if (confirmPassword !== undefined && password !== confirmPassword) {
       return res.status(400).json({
         success: false,
-        message: 'Administrator Setup Code is required.',
+        message: 'Passwords do not match.',
       });
     }
 
-    if (submittedCode.trim() !== expectedSetupCode) {
+    // 1. Verify administrator setup code configuration
+    const expectedSetupCode = process.env.ADMIN_SETUP_CODE || process.env.ADMIN_REGISTRATION_CODE;
+    const submittedCode = setupCode !== undefined ? setupCode : registrationCode;
+
+    if (!expectedSetupCode || !submittedCode || typeof submittedCode !== 'string' || submittedCode.trim() !== expectedSetupCode) {
       return res.status(403).json({
         success: false,
         message: 'Invalid administrator setup code. Access denied.',
       });
     }
 
-    // 3. Duplicate checks
     const normalizedEmail = email.trim().toLowerCase();
+    if (!isValidEmail(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address.',
+      });
+    }
+
+    // 2. Duplicate checks
     const existingEmail = await User.findOne({ email: normalizedEmail });
     if (existingEmail) {
       return res.status(400).json({
         success: false,
-        message: 'An administrator account with this email already exists.',
+        message: 'Email is already registered.',
       });
     }
 
-    const effectiveAdminId = (administratorId || adminId || employeeId || '').trim();
+    const effectiveAdminId = (administratorId || adminId || employeeId || '').trim().toUpperCase();
     if (effectiveAdminId) {
       const existingId = await User.findOne({ employeeId: effectiveAdminId });
       if (existingId) {
         return res.status(400).json({
           success: false,
-          message: 'An administrator with this Administrator ID already exists.',
+          message: 'Administrator ID is already registered.',
         });
       }
     }
 
-    // 4. Create admin account - role is strictly forced to 'admin'
+    // 3. Create admin account - role is strictly forced to 'admin'
     const admin = await User.create({
       name: name.trim(),
       email: normalizedEmail,
@@ -330,7 +381,7 @@ const login = async (req, res, next) => {
       !password || typeof password !== 'string' || password.length > 128) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide email and password',
+        message: 'Please provide email and password.',
       });
     }
 
@@ -392,7 +443,7 @@ const getMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ success: false, message: 'User not found.' });
     }
     res.json({
       success: true,
@@ -425,7 +476,7 @@ const updateProfile = async (req, res, next) => {
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
     if (name) user.name = name;
@@ -437,7 +488,7 @@ const updateProfile = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'Profile updated successfully',
+      message: 'Profile updated successfully.',
       user: {
         id: updatedUser._id,
         name: updatedUser.name,
@@ -487,4 +538,5 @@ module.exports = {
   getMe,
   updateProfile,
   getOfficers,
+  CONTROLLED_DEPARTMENTS,
 };

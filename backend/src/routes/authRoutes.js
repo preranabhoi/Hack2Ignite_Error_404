@@ -14,7 +14,9 @@ const { authRateLimit } = require('../middleware/securityMiddleware');
 
 router.post('/register', authRateLimit, registerCitizen);
 router.post('/register/citizen', authRateLimit, registerCitizen);
+router.post('/register-officer', authRateLimit, registerOfficer);
 router.post('/register/officer', authRateLimit, registerOfficer);
+router.post('/register-admin', authRateLimit, registerAdmin);
 router.post('/register/admin', authRateLimit, registerAdmin);
 router.post('/login', authRateLimit, login);
 router.get('/me', protect, getMe);

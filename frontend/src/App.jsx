@@ -35,7 +35,9 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/register/citizen" element={<RegisterPage />} />
+              <Route path="/register-officer" element={<RegisterOfficerPage />} />
               <Route path="/register/officer" element={<RegisterOfficerPage />} />
+              <Route path="/register-admin" element={<RegisterAdminPage />} />
               <Route path="/register/admin" element={<RegisterAdminPage />} />
 
               {/* Protected Citizen Routes */}

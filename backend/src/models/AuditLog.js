@@ -4,7 +4,17 @@ const auditLogSchema = new mongoose.Schema(
   {
     action: {
       type: String,
-      enum: ['assignment', 'priority_override', 'department_override', 'status_change', 'grievance_merge'],
+      enum: [
+        'assignment',
+        'priority_override',
+        'department_override',
+        'status_change',
+        'grievance_merge',
+        'officer_create',
+        'officer_update',
+        'officer_status_change',
+        'officer_delete',
+      ],
       required: true,
       index: true,
     },
@@ -17,7 +27,7 @@ const auditLogSchema = new mongoose.Schema(
     grievanceId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Grievance',
-      required: true,
+      required: false,
       index: true,
     },
     details: {

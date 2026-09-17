@@ -46,19 +46,19 @@ export const authService = {
     return response.data;
   },
   register: async (userData) => {
-    const response = await api.post('/auth/register/citizen', userData);
+    const response = await api.post('/auth/register', userData);
     return response.data;
   },
   registerCitizen: async (userData) => {
-    const response = await api.post('/auth/register/citizen', userData);
+    const response = await api.post('/auth/register', userData);
     return response.data;
   },
   registerOfficer: async (officerData) => {
-    const response = await api.post('/auth/register/officer', officerData);
+    const response = await api.post('/auth/register-officer', officerData);
     return response.data;
   },
   registerAdmin: async (adminData) => {
-    const response = await api.post('/auth/register/admin', adminData);
+    const response = await api.post('/auth/register-admin', adminData);
     return response.data;
   },
   getMe: async () => {

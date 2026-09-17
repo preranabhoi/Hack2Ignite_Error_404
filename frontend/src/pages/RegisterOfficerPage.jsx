@@ -7,7 +7,6 @@ import {
   User,
   Phone,
   Building,
-  Key,
   MapPin,
   ArrowRight,
   AlertCircle,
@@ -27,22 +26,6 @@ const DEPARTMENTS = [
   'Street Lighting',
   'Public Safety',
   'Environment',
-  'Health & Environment',
-  'Traffic & Transport',
-  'General Administration',
-];
-
-const PREDEFINED_OFFICER_TYPES = [
-  'Field Officer',
-  'Road Maintenance Officer',
-  'Water Supply Officer',
-  'Electrical Officer',
-  'Sanitation Officer',
-  'Drainage Officer',
-  'Street Lighting Officer',
-  'Public Safety Officer',
-  'Environmental Officer',
-  'Other (Custom)',
 ];
 
 const RegisterOfficerPage = () => {
@@ -52,14 +35,11 @@ const RegisterOfficerPage = () => {
     phone: '',
     employeeId: '',
     department: 'Public Works & Roads',
-    officerTypeSelect: 'Field Officer',
-    customOfficerType: '',
     designation: 'Field Officer',
     ward: '',
     city: 'Bhubaneswar',
     password: '',
     confirmPassword: '',
-    registrationCode: '',
   });
 
   const [error, setError] = useState('');
@@ -80,24 +60,14 @@ const RegisterOfficerPage = () => {
     setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError('Passwords do not match.');
       return;
     }
 
     if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
+      setError('Password must be at least 8 characters long.');
       return;
     }
-
-    if (!formData.registrationCode.trim()) {
-      setError('Official Officer Registration Code is required for verification.');
-      return;
-    }
-
-    const effectiveOfficerType =
-      formData.officerTypeSelect === 'Other (Custom)'
-        ? formData.customOfficerType.trim() || 'Field Officer'
-        : formData.officerTypeSelect;
 
     setIsSubmitting(true);
 
@@ -106,14 +76,13 @@ const RegisterOfficerPage = () => {
         name: formData.name.trim(),
         email: formData.email.trim(),
         password: formData.password,
+        confirmPassword: formData.confirmPassword,
         phone: formData.phone.trim(),
         employeeId: formData.employeeId.trim(),
         department: formData.department,
-        officerType: effectiveOfficerType,
         designation: formData.designation.trim() || 'Field Officer',
         ward: formData.ward.trim(),
         city: formData.city.trim(),
-        registrationCode: formData.registrationCode.trim(),
       };
 
       const res = await registerOfficer(payload);
@@ -122,7 +91,7 @@ const RegisterOfficerPage = () => {
       }
     } catch (err) {
       setError(
-        err.response?.data?.message || 'Field Officer registration failed. Please check your credentials and registration code.'
+        err.response?.data?.message || 'Field Officer registration failed. Please check your details and try again.'
       );
     } finally {
       setIsSubmitting(false);
@@ -193,16 +162,24 @@ const RegisterOfficerPage = () => {
               <label className="form-label" htmlFor="name">
                 Full Name *
               </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                required
-                placeholder="e.g. Neha Patil"
-                className="form-input"
-                value={formData.name}
-                onChange={handleChange}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  required
+                  placeholder="e.g. Rajesh Verma"
+                  className="form-input"
+                  value={formData.name}
+                  onChange={handleChange}
+                  style={{ paddingLeft: '2.5rem' }}
+                />
+                <User
+                  size={16}
+                  color="var(--text-subtle)"
+                  style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }}
+                />
+              </div>
             </div>
 
             {/* Email */}
@@ -210,16 +187,24 @@ const RegisterOfficerPage = () => {
               <label className="form-label" htmlFor="email">
                 Official Email Address *
               </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                placeholder="officer@civicai.gov"
-                className="form-input"
-                value={formData.email}
-                onChange={handleChange}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="officer@civicai.gov"
+                  className="form-input"
+                  value={formData.email}
+                  onChange={handleChange}
+                  style={{ paddingLeft: '2.5rem' }}
+                />
+                <Mail
+                  size={16}
+                  color="var(--text-subtle)"
+                  style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }}
+                />
+              </div>
             </div>
 
             {/* Employee ID */}
@@ -227,16 +212,24 @@ const RegisterOfficerPage = () => {
               <label className="form-label" htmlFor="employeeId">
                 Employee ID *
               </label>
-              <input
-                id="employeeId"
-                name="employeeId"
-                type="text"
-                required
-                placeholder="e.g. DRN-001"
-                className="form-input"
-                value={formData.employeeId}
-                onChange={handleChange}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="employeeId"
+                  name="employeeId"
+                  type="text"
+                  required
+                  placeholder="e.g. PWD-101"
+                  className="form-input"
+                  value={formData.employeeId}
+                  onChange={handleChange}
+                  style={{ paddingLeft: '2.5rem' }}
+                />
+                <Briefcase
+                  size={16}
+                  color="var(--text-subtle)"
+                  style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }}
+                />
+              </div>
             </div>
 
             {/* Mobile Number */}
@@ -244,15 +237,23 @@ const RegisterOfficerPage = () => {
               <label className="form-label" htmlFor="phone">
                 Mobile Number
               </label>
-              <input
-                id="phone"
-                name="phone"
-                type="tel"
-                placeholder="+91 XXXXX XXXXX"
-                className="form-input"
-                value={formData.phone}
-                onChange={handleChange}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="+91 XXXXX XXXXX"
+                  className="form-input"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  style={{ paddingLeft: '2.5rem' }}
+                />
+                <Phone
+                  size={16}
+                  color="var(--text-subtle)"
+                  style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }}
+                />
+              </div>
             </div>
 
             {/* Department */}
@@ -276,45 +277,6 @@ const RegisterOfficerPage = () => {
               </select>
             </div>
 
-            {/* Officer Type */}
-            <div className="form-group">
-              <label className="form-label" htmlFor="officerTypeSelect">
-                Officer Type / Classification *
-              </label>
-              <select
-                id="officerTypeSelect"
-                name="officerTypeSelect"
-                className="form-select"
-                value={formData.officerTypeSelect}
-                onChange={handleChange}
-              >
-                {PREDEFINED_OFFICER_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Custom Officer Type if Selected */}
-            {formData.officerTypeSelect === 'Other (Custom)' && (
-              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label" htmlFor="customOfficerType">
-                  Specify Officer Type *
-                </label>
-                <input
-                  id="customOfficerType"
-                  name="customOfficerType"
-                  type="text"
-                  required
-                  placeholder="e.g. Drainage Inspector"
-                  className="form-input"
-                  value={formData.customOfficerType}
-                  onChange={handleChange}
-                />
-              </div>
-            )}
-
             {/* Designation */}
             <div className="form-group">
               <label className="form-label" htmlFor="designation">
@@ -324,7 +286,7 @@ const RegisterOfficerPage = () => {
                 id="designation"
                 name="designation"
                 type="text"
-                placeholder="e.g. Senior Inspector / Field Officer"
+                placeholder="e.g. Senior Executive Engineer"
                 className="form-input"
                 value={formData.designation}
                 onChange={handleChange}
@@ -336,15 +298,23 @@ const RegisterOfficerPage = () => {
               <label className="form-label" htmlFor="ward">
                 Ward / Area
               </label>
-              <input
-                id="ward"
-                name="ward"
-                type="text"
-                placeholder="e.g. Ward 5"
-                className="form-input"
-                value={formData.ward}
-                onChange={handleChange}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="ward"
+                  name="ward"
+                  type="text"
+                  placeholder="e.g. Ward 14"
+                  className="form-input"
+                  value={formData.ward}
+                  onChange={handleChange}
+                  style={{ paddingLeft: '2.5rem' }}
+                />
+                <MapPin
+                  size={16}
+                  color="var(--text-subtle)"
+                  style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }}
+                />
+              </div>
             </div>
 
             {/* City / Municipality */}
@@ -357,56 +327,36 @@ const RegisterOfficerPage = () => {
                 name="city"
                 type="text"
                 required
-                placeholder="e.g. Bhubaneswar / Dhule"
+                placeholder="e.g. Bhubaneswar"
                 className="form-input"
                 value={formData.city}
                 onChange={handleChange}
               />
             </div>
 
-            {/* Officer Registration Code */}
-            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label className="form-label" htmlFor="registrationCode" style={{ color: '#0f766e', fontWeight: 700 }}>
-                Official Officer Registration Code *
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  id="registrationCode"
-                  name="registrationCode"
-                  type="password"
-                  required
-                  placeholder="Enter authorized officer verification code"
-                  className="form-input"
-                  value={formData.registrationCode}
-                  onChange={handleChange}
-                  style={{ paddingLeft: '2.5rem', borderColor: '#99f6e4' }}
-                />
-                <Key
-                  size={16}
-                  color="#0d9488"
-                  style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }}
-                />
-              </div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
-                Provided by municipal administration to verify authorized personnel.
-              </span>
-            </div>
-
             {/* Password */}
             <div className="form-group">
               <label className="form-label" htmlFor="password">
-                Password *
+                Password * (min 8 chars)
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                placeholder="•••••••• (min 8 chars)"
-                className="form-input"
-                value={formData.password}
-                onChange={handleChange}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  className="form-input"
+                  value={formData.password}
+                  onChange={handleChange}
+                  style={{ paddingLeft: '2.5rem' }}
+                />
+                <Lock
+                  size={16}
+                  color="var(--text-subtle)"
+                  style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }}
+                />
+              </div>
             </div>
 
             {/* Confirm Password */}
@@ -414,16 +364,24 @@ const RegisterOfficerPage = () => {
               <label className="form-label" htmlFor="confirmPassword">
                 Confirm Password *
               </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                required
-                placeholder="••••••••"
-                className="form-input"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  className="form-input"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  style={{ paddingLeft: '2.5rem' }}
+                />
+                <Lock
+                  size={16}
+                  color="var(--text-subtle)"
+                  style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }}
+                />
+              </div>
             </div>
           </div>
 
@@ -442,7 +400,7 @@ const RegisterOfficerPage = () => {
             {isSubmitting ? (
               <>
                 <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                <span>Verifying & Registering...</span>
+                <span>Creating Officer Account...</span>
               </>
             ) : (
               <>

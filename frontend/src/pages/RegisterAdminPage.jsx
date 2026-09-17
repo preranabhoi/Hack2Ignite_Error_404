@@ -65,8 +65,10 @@ const RegisterAdminPage = () => {
         name: formData.name.trim(),
         email: formData.email.trim(),
         password: formData.password,
+        confirmPassword: formData.confirmPassword,
         phone: formData.phone.trim(),
         adminId: formData.adminId.trim(),
+        administratorId: formData.adminId.trim(),
         setupCode: formData.setupCode.trim(),
       };
 
