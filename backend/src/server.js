@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const path = require('path');
 require('dotenv').config();
 
 const connectDB = require('./config/db');
@@ -71,6 +72,21 @@ app.use('/api/grievances', grievanceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/officer', officerRoutes);
 app.use('/api/notifications', notificationRoutes);
+
+// Serve React frontend in production
+if (process.env.NODE_ENV === 'production') {
+  const frontendPath = path.join(__dirname, '../../frontend/dist');
+
+  app.use(express.static(frontendPath));
+
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  });
+}
 
 // Error Handling Middleware
 app.use(notFound);
