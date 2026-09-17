@@ -8,7 +8,12 @@ const notFound = (req, res, next) => {
 // Global Error Handler Middleware
 const errorHandler = (err, req, res, next) => {
   let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  let message = err.message || 'Internal Server Error';
+  let message = process.env.NODE_ENV === 'production' ? 'Internal Server Error' : (err.message || 'Internal Server Error');
+
+  if (err.type === 'entity.too.large') {
+    statusCode = 413;
+    message = 'Request payload is too large.';
+  }
 
   // Handle Mongoose bad ObjectId
   if (err.name === 'CastError') {

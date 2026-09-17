@@ -91,10 +91,14 @@ const grievanceSchema = new mongoose.Schema(
       latitude: {
         type: Number,
         default: null,
+        min: -90,
+        max: 90,
       },
       longitude: {
         type: Number,
         default: null,
+        min: -180,
+        max: 180,
       },
       landmark: {
         type: String,
@@ -117,7 +121,9 @@ const grievanceSchema = new mongoose.Schema(
     },
     images: [
       {
-        type: String, // base64 or URL
+        type: String,
+        maxlength: [5 * 1024 * 1024, 'Image reference is too large'],
+        maxlength: [5 * 1024 * 1024, 'Image reference is too large'],
       },
     ],
     citizenId: {
@@ -143,7 +149,7 @@ const grievanceSchema = new mongoose.Schema(
         enum: ['pending', 'completed', 'failed'],
         default: 'pending',
       },
-      confidenceScore: { type: Number, default: 0.9 },
+      confidenceScore: { type: Number, default: 0.9, min: 0, max: 1 },
       analyzedAt: { type: Date, default: null },
       rawResponse: { type: String, select: false },
     },
@@ -203,6 +209,7 @@ const grievanceSchema = new mongoose.Schema(
         status: {
           type: String,
           required: true,
+          enum: ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved', 'Rejected'],
         },
         changedBy: {
           type: mongoose.Schema.Types.ObjectId,
@@ -223,6 +230,10 @@ const grievanceSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+grievanceSchema.index({ citizenId: 1, createdAt: -1 });
+grievanceSchema.index({ assignedOfficer: 1, status: 1, createdAt: -1 });
+grievanceSchema.index({ department: 1, status: 1, priority: 1 });
 
 // Pre-save hook: auto-generate tracking ID and map default department if empty
 grievanceSchema.pre('validate', function (next) {

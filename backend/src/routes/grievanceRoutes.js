@@ -11,18 +11,20 @@ const {
   chatCitizenAssistant,
 } = require('../controllers/grievanceController');
 const { protect, authorize } = require('../middleware/authMiddleware');
+const { aiRateLimit } = require('../middleware/securityMiddleware');
 
 // Citizen Assistant Chat
-router.post('/assistant-chat', protect, chatCitizenAssistant);
+router.post('/assistant-chat', protect, aiRateLimit, chatCitizenAssistant);
 
 // Citizen grievance routes
 router.post('/', protect, authorize('citizen'), createGrievance);
 router.get('/my', protect, authorize('citizen'), getMyGrievances);
 router.get('/:id', protect, getGrievanceById);
-router.post('/:id/analyze', protect, reanalyzeGrievance);
+router.post('/:id/analyze', protect, aiRateLimit, reanalyzeGrievance);
 router.post(
   '/:id/resolution-recommendation',
   protect,
+  aiRateLimit,
   authorize('admin', 'officer'),
   generateGrievanceResolutionRecommendation
 );

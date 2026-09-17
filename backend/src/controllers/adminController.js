@@ -1,6 +1,8 @@
 const { Grievance, CATEGORY_DEPARTMENT_MAP } = require('../models/Grievance');
 const User = require('../models/User');
 const { createNotification } = require('../services/notificationService');
+const { recordAudit } = require('../services/auditService');
+const { escapeRegex, validateImages, validateText } = require('../middleware/securityMiddleware');
 
 // @desc    Get aggregate statistics and chart data for Admin Dashboard
 // @route   GET /api/admin/stats
@@ -166,7 +168,7 @@ const getAllGrievances = async (req, res, next) => {
     }
 
     if (search && search.trim() !== '') {
-      const searchRegex = new RegExp(search.trim(), 'i');
+      const searchRegex = new RegExp(escapeRegex(search.trim().slice(0, 100)), 'i');
       query.$or = [
         { title: searchRegex },
         { description: searchRegex },
@@ -180,7 +182,7 @@ const getAllGrievances = async (req, res, next) => {
     sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
     const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 50;
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
     const skip = (pageNum - 1) * limitNum;
 
     const totalCount = await Grievance.countDocuments(query);
@@ -219,7 +221,7 @@ const getOfficersDirectory = async (req, res, next) => {
       filter.department = department;
     }
 
-    const officers = await User.find(filter).select('-password');
+    const officers = await User.find(filter).select('name email role department designation employeeId availabilityStatus');
 
     // Attach current active workload count to each officer
     const officersWithWorkload = await Promise.all(
@@ -267,6 +269,7 @@ const assignOfficer = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Invalid officer selected' });
     }
 
+    const previousOfficerId = grievance.assignedOfficer;
     grievance.assignedOfficer = officer._id;
 
     // Automatically advance status to 'Assigned' if currently 'Submitted' or 'Under Review'
@@ -284,6 +287,12 @@ const assignOfficer = async (req, res, next) => {
     });
 
     const updated = await grievance.save();
+    await recordAudit({
+      action: 'assignment',
+      actorId: req.user._id,
+      grievanceId: grievance._id,
+      details: { officerId: officer._id, previousOfficerId, notes: notes || '' },
+    });
     await createNotification({
       userId: grievance.citizenId,
       title: 'Grievance assigned',
@@ -338,6 +347,10 @@ const updateGrievanceStatus = async (req, res, next) => {
       });
     }
 
+    const textError = validateText(comment, 'Comment', 1000) || validateText(remarks, 'Remarks', 2000) || validateText(actionTaken, 'Action taken', 2000);
+    const imageError = validateImages(req.body.resolutionProofImages);
+    if (textError || imageError) return res.status(400).json({ success: false, message: textError || imageError });
+
     const grievance = await Grievance.findById(id);
     if (!grievance) {
       return res.status(404).json({ success: false, message: 'Grievance not found' });
@@ -364,6 +377,12 @@ const updateGrievanceStatus = async (req, res, next) => {
     });
 
     const updated = await grievance.save();
+    await recordAudit({
+      action: 'status_change',
+      actorId: req.user._id,
+      grievanceId: grievance._id,
+      details: { from: oldStatus, to: status, comment: comment || '' },
+    });
     await createNotification({
       userId: grievance.citizenId,
       title: `Grievance status: ${status}`,
@@ -405,6 +424,19 @@ const overrideGrievance = async (req, res, next) => {
     const { id } = req.params;
     const { category, department, priority, overrideReason } = req.body;
 
+    if (category && !Object.prototype.hasOwnProperty.call(CATEGORY_DEPARTMENT_MAP, category)) {
+      return res.status(400).json({ success: false, message: 'Invalid grievance category.' });
+    }
+    if (department && !['Public Works & Roads', 'Waste Management', 'Water Supply & Sanitation', 'Electricity & Power', 'Health & Environment', 'Traffic & Transport', 'General Administration', 'None'].includes(department)) {
+      return res.status(400).json({ success: false, message: 'Invalid department.' });
+    }
+    if (priority && !['Low', 'Medium', 'High', 'Critical'].includes(priority)) {
+      return res.status(400).json({ success: false, message: 'Invalid priority.' });
+    }
+    if (validateText(overrideReason, 'Override reason', 1000)) {
+      return res.status(400).json({ success: false, message: 'Override reason is too long.' });
+    }
+
     const grievance = await Grievance.findById(id);
     if (!grievance) {
       return res.status(404).json({ success: false, message: 'Grievance not found' });
@@ -443,6 +475,12 @@ const overrideGrievance = async (req, res, next) => {
     });
 
     const updated = await grievance.save();
+    if (changes.some((change) => change.startsWith('Priority'))) {
+      await recordAudit({ action: 'priority_override', actorId: req.user._id, grievanceId: grievance._id, details: { changes, reason: overrideReason || '' } });
+    }
+    if (changes.some((change) => change.startsWith('Department'))) {
+      await recordAudit({ action: 'department_override', actorId: req.user._id, grievanceId: grievance._id, details: { changes, reason: overrideReason || '' } });
+    }
     if (changes.some((change) => change.startsWith('Priority')) && grievance.assignedOfficer) {
       await createNotification({
         userId: grievance.assignedOfficer,

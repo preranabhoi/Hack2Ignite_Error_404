@@ -1,13 +1,20 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const getJwtSecret = () => {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    throw new Error('JWT_SECRET must be configured with at least 32 characters.');
+  }
+  return process.env.JWT_SECRET;
+};
 
 // Helper to generate JWT token
 const generateToken = (id) => {
   return jwt.sign(
     { id },
-    process.env.JWT_SECRET || 'civicai_super_secret_jwt_key_hack2ignite_2026',
+    getJwtSecret(),
     {
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+      expiresIn: process.env.JWT_EXPIRES_IN || '2h',
+      algorithm: 'HS256',
     }
   );
 };
@@ -19,7 +26,9 @@ const register = async (req, res, next) => {
   try {
     const { name, email, password, phone, address } = req.body;
 
-    if (!name || !email || !password) {
+    if (!name || typeof name !== 'string' || name.trim().length < 2 || name.length > 100 ||
+      !email || typeof email !== 'string' || email.length > 254 ||
+      !password || typeof password !== 'string' || password.length < 8 || password.length > 128) {
       return res.status(400).json({
         success: false,
         message: 'Please provide name, email, and password',
@@ -27,7 +36,8 @@ const register = async (req, res, next) => {
     }
 
     // Check if user already exists
-    const userExists = await User.findOne({ email });
+    const normalizedEmail = email.trim().toLowerCase();
+    const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
       return res.status(400).json({
         success: false,
@@ -37,8 +47,8 @@ const register = async (req, res, next) => {
 
     // Citizens register publicly. Officers/Admins are created by Admin or Seed.
     const user = await User.create({
-      name,
-      email,
+      name: name.trim(),
+      email: normalizedEmail,
       password,
       role: 'citizen',
       department: 'None',
@@ -74,7 +84,8 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (!email || typeof email !== 'string' || email.length > 254 ||
+      !password || typeof password !== 'string' || password.length > 128) {
       return res.status(400).json({
         success: false,
         message: 'Please provide email and password',
@@ -82,7 +93,7 @@ const login = async (req, res, next) => {
     }
 
     // Find user with password explicitly included
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
 
     if (!user) {
       return res.status(401).json({
@@ -204,7 +215,7 @@ const getOfficers = async (req, res, next) => {
       filter.department = department;
     }
 
-    const officers = await User.find(filter).select('-password');
+    const officers = await User.find(filter).select('name email role department designation employeeId availabilityStatus');
 
     res.json({
       success: true,

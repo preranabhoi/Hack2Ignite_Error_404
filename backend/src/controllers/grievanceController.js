@@ -7,6 +7,9 @@ const {
   chatWithCitizenAssistant,
 } = require('../services/aiService');
 const { createNotification, notifyAdmins } = require('../services/notificationService');
+const { aiRateLimit } = require('../middleware/securityMiddleware');
+const { validateImages, validateText, escapeRegex } = require('../middleware/securityMiddleware');
+const { recordAudit } = require('../services/auditService');
 
 // @desc    Create a new grievance & run lightweight AI analysis
 // @route   POST /api/grievances
@@ -17,13 +20,12 @@ const createGrievance = async (req, res, next) => {
       title,
       description,
       category,
-      department,
       priority,
       location,
       images,
     } = req.body;
 
-    if (!title || !description || !category) {
+    if (!title || !description || !category || typeof title !== 'string' || typeof description !== 'string') {
       return res.status(400).json({
         success: false,
         message: 'Please provide title, description, and category',
@@ -37,11 +39,13 @@ const createGrievance = async (req, res, next) => {
       });
     }
 
-    // Determine department from category if not explicitly provided
-    const assignedDepartment =
-      department ||
-      CATEGORY_DEPARTMENT_MAP[category] ||
-      'General Administration';
+    const textError = validateText(title, 'Title', 150) || validateText(description, 'Description', 3000);
+    const imageError = validateImages(images);
+    if (textError || imageError || (priority && !['Low', 'Medium', 'High', 'Critical'].includes(priority))) {
+      return res.status(400).json({ success: false, message: textError || imageError || 'Invalid priority.' });
+    }
+
+    const assignedDepartment = CATEGORY_DEPARTMENT_MAP[category] || 'General Administration';
 
     const grievance = new Grievance({
       title,
@@ -51,13 +55,13 @@ const createGrievance = async (req, res, next) => {
       priority: priority || 'Medium',
       status: 'Submitted',
       location: {
-        address: location.address,
-        latitude: location.latitude || null,
-        longitude: location.longitude || null,
-        landmark: location.landmark || '',
-        city: location.city || 'Bhubaneswar',
-        ward: location.ward || '',
-        pincode: location.pincode || '',
+        address: String(location.address).trim().slice(0, 300),
+        latitude: Number.isFinite(Number(location.latitude)) ? Number(location.latitude) : null,
+        longitude: Number.isFinite(Number(location.longitude)) ? Number(location.longitude) : null,
+        landmark: String(location.landmark || '').trim().slice(0, 150),
+        city: String(location.city || 'Bhubaneswar').trim().slice(0, 100),
+        ward: String(location.ward || '').trim().slice(0, 100),
+        pincode: String(location.pincode || '').trim().slice(0, 12),
       },
       images: Array.isArray(images) ? images : [],
       citizenId: req.user._id,
@@ -198,6 +202,9 @@ const reviewDuplicateDetection = async (req, res, next) => {
     });
 
     const updated = await grievance.save();
+    if (decision === 'merged') {
+      await recordAudit({ action: 'grievance_merge', actorId: req.user._id, grievanceId: grievance._id, details: { relatedGrievanceIds: grievance.duplicateDetection.relatedGrievanceIds, comment } });
+    }
     await updated.populate('duplicateDetection.relatedGrievanceIds', 'trackingId title status location');
 
     res.json({ success: true, message: `Duplicate recommendation marked as ${decision}.`, grievance: updated });
@@ -219,11 +226,11 @@ const reanalyzeGrievance = async (req, res, next) => {
     }
 
     // Role check: Citizen can only re-analyze their own
-    if (
-      req.user.role === 'citizen' &&
-      grievance.citizenId.toString() !== req.user._id.toString()
-    ) {
+    if (req.user.role === 'citizen' && grievance.citizenId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    if (req.user.role === 'officer' && (!grievance.assignedOfficer || grievance.assignedOfficer.toString() !== req.user._id.toString())) {
+      return res.status(403).json({ success: false, message: 'Only the assigned officer can re-analyze this grievance.' });
     }
 
     const aiResult = await analyzeGrievance({
@@ -315,7 +322,7 @@ const getMyGrievances = async (req, res, next) => {
     }
 
     if (search && search.trim() !== '') {
-      const searchRegex = new RegExp(search.trim(), 'i');
+      const searchRegex = new RegExp(escapeRegex(search.trim().slice(0, 100)), 'i');
       query.$or = [
         { title: searchRegex },
         { description: searchRegex },
@@ -438,8 +445,14 @@ const updateGrievance = async (req, res, next) => {
       images,
     } = req.body;
 
-    if (title) grievance.title = title;
-    if (description) grievance.description = description;
+    const textError = validateText(title, 'Title', 150) || validateText(description, 'Description', 3000);
+    const imageError = validateImages(images);
+    if (textError || imageError || (priority && !['Low', 'Medium', 'High', 'Critical'].includes(priority))) {
+      return res.status(400).json({ success: false, message: textError || imageError || 'Invalid priority.' });
+    }
+
+    if (title !== undefined) grievance.title = title.trim();
+    if (description !== undefined) grievance.description = description.trim();
     if (category) {
       grievance.category = category;
       grievance.department =
@@ -447,10 +460,10 @@ const updateGrievance = async (req, res, next) => {
     }
     if (priority) grievance.priority = priority;
     if (location) {
-      grievance.location = {
-        ...grievance.location.toObject(),
-        ...location,
-      };
+      const allowedLocationFields = ['address', 'landmark', 'city', 'ward', 'pincode', 'latitude', 'longitude'];
+      for (const field of allowedLocationFields) {
+        if (location[field] !== undefined) grievance.location[field] = location[field];
+      }
     }
     if (images && Array.isArray(images)) {
       grievance.images = images;
@@ -530,7 +543,9 @@ const chatCitizenAssistant = async (req, res, next) => {
   try {
     const { messages = [] } = req.body;
 
-    if (!Array.isArray(messages) || messages.length === 0) {
+    if (!Array.isArray(messages) || messages.length === 0 || messages.length > 20 || messages.some((message) =>
+      !message || !['user', 'assistant'].includes(message.role) || typeof message.content !== 'string' || message.content.length > 2000
+    )) {
       return res.status(400).json({
         success: false,
         message: 'Please provide at least one message for the assistant.',

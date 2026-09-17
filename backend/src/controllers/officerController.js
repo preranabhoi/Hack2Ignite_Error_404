@@ -1,6 +1,7 @@
 const { Grievance } = require('../models/Grievance');
 const User = require('../models/User');
 const { createNotification } = require('../services/notificationService');
+const { escapeRegex, validateImages, validateText } = require('../middleware/securityMiddleware');
 
 // @desc    Get dashboard metrics for logged-in Officer
 // @route   GET /api/officer/stats
@@ -60,7 +61,7 @@ const getOfficerGrievances = async (req, res, next) => {
     }
 
     if (search && search.trim() !== '') {
-      const searchRegex = new RegExp(search.trim(), 'i');
+      const searchRegex = new RegExp(escapeRegex(search.trim().slice(0, 100)), 'i');
       query.$or = [
         { title: searchRegex },
         { description: searchRegex },
@@ -148,6 +149,7 @@ const acceptAssignment = async (req, res, next) => {
     const { id } = req.params;
     const officerId = req.user._id;
     const { notes } = req.body;
+    if (validateText(notes, 'Notes', 1000)) return res.status(400).json({ success: false, message: 'Notes are too long.' });
 
     const grievance = await Grievance.findById(id);
     if (!grievance) {
@@ -203,6 +205,7 @@ const startWork = async (req, res, next) => {
     const { id } = req.params;
     const officerId = req.user._id;
     const { notes, estimatedCompletion } = req.body;
+    if (validateText(notes, 'Notes', 1000) || validateText(estimatedCompletion, 'Estimated completion', 100)) return res.status(400).json({ success: false, message: 'Work update text is too long.' });
 
     const grievance = await Grievance.findById(id);
     if (!grievance) {
@@ -264,6 +267,9 @@ const addProgressNote = async (req, res, next) => {
 
     if (!note || note.trim() === '') {
       return res.status(400).json({ success: false, message: 'Please provide a progress note' });
+    }
+    if (validateText(note, 'Progress note', 1500) || validateImages(image ? [image] : undefined)) {
+      return res.status(400).json({ success: false, message: 'Invalid progress note or image.' });
     }
 
     const grievance = await Grievance.findById(id);
@@ -327,6 +333,9 @@ const resolveGrievance = async (req, res, next) => {
         success: false,
         message: 'Resolution description (action taken) is required to resolve grievance.',
       });
+    }
+    if (validateText(actionTaken, 'Action taken', 2000) || validateText(remarks, 'Remarks', 2000) || validateImages(resolutionProofImages)) {
+      return res.status(400).json({ success: false, message: 'Invalid resolution details or proof image.' });
     }
 
     const grievance = await Grievance.findById(id);

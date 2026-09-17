@@ -1,6 +1,13 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const getJwtSecret = () => {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    throw new Error('JWT_SECRET must be configured with at least 32 characters.');
+  }
+  return process.env.JWT_SECRET;
+};
+
 // Protect routes - verify JWT token
 const protect = async (req, res, next) => {
   let token;
@@ -22,7 +29,8 @@ const protect = async (req, res, next) => {
   try {
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || 'civicai_super_secret_jwt_key_hack2ignite_2026'
+      getJwtSecret(),
+      { algorithms: ['HS256'] }
     );
 
     const user = await User.findById(decoded.id);

@@ -14,6 +14,10 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const User = require('./models/User');
 const { seedUsers } = require('./utils/seed');
 
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET environment variable must be set to at least 32 characters.');
+}
+
 const app = express();
 
 // Connect to MongoDB
@@ -37,12 +41,12 @@ connectDB().then(async () => {
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map((origin) => origin.trim()),
     credentials: true,
   })
 );
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '6mb' }));
+app.use(express.urlencoded({ extended: false, limit: '6mb' }));
 
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
