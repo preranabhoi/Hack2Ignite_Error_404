@@ -42,7 +42,7 @@ async function runTests() {
   const dynamicOfficerEmail = `dynamic.officer.${timestamp}@example.gov`;
 
   const validOfficerCode = process.env.OFFICER_REGISTRATION_CODE || 'OFFICER-CIVIC-2026';
-  const validAdminCode = process.env.ADMIN_REGISTRATION_CODE || 'ADMIN-CIVIC-2026';
+  const validAdminCode = process.env.ADMIN_SETUP_CODE || process.env.ADMIN_REGISTRATION_CODE || 'ADMIN-CIVIC-2026';
 
   try {
     // ----------------------------------------------------
@@ -360,7 +360,7 @@ async function runTests() {
         setupCode: 'WRONG-SETUP-CODE-1234',
       }),
     });
-    assert(invalidAdminRes.status === 400, 'Administrator registration with invalid setup code is rejected with 400');
+    assert(invalidAdminRes.status === 403, 'Administrator registration with invalid setup code is rejected with 403');
 
     // ----------------------------------------------------
     // TEST 16: Invalid officer registration code

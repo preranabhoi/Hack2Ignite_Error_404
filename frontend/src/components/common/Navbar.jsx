@@ -6,6 +6,7 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  Users,
   User,
   Sparkles,
   Wrench,

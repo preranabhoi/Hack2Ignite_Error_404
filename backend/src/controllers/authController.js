@@ -214,6 +214,7 @@ const registerAdmin = async (req, res, next) => {
       password,
       phone,
       adminId,
+      administratorId,
       employeeId,
       setupCode,
       registrationCode,
@@ -235,25 +236,53 @@ const registerAdmin = async (req, res, next) => {
       });
     }
 
-    // Verify administrator setup code
-    const validAdminCode = process.env.ADMIN_REGISTRATION_CODE || 'ADMIN-CIVIC-2026';
-    const submittedCode = setupCode || registrationCode;
-    if (!submittedCode || submittedCode.trim() !== validAdminCode) {
+    // 1. Verify administrator setup code configuration
+    const expectedSetupCode = process.env.ADMIN_SETUP_CODE || process.env.ADMIN_REGISTRATION_CODE;
+    if (!expectedSetupCode) {
+      return res.status(500).json({
+        success: false,
+        message: 'Administrator setup is not configured.',
+      });
+    }
+
+    // 2. Validate submitted setup code
+    const submittedCode = setupCode !== undefined ? setupCode : registrationCode;
+    if (!submittedCode || typeof submittedCode !== 'string' || !submittedCode.trim()) {
       return res.status(400).json({
+        success: false,
+        message: 'Administrator Setup Code is required.',
+      });
+    }
+
+    if (submittedCode.trim() !== expectedSetupCode) {
+      return res.status(403).json({
         success: false,
         message: 'Invalid administrator setup code. Access denied.',
       });
     }
 
+    // 3. Duplicate checks
     const normalizedEmail = email.trim().toLowerCase();
     const existingEmail = await User.findOne({ email: normalizedEmail });
     if (existingEmail) {
       return res.status(400).json({
         success: false,
-        message: 'An account with this email address already exists.',
+        message: 'An administrator account with this email already exists.',
       });
     }
 
+    const effectiveAdminId = (administratorId || adminId || employeeId || '').trim();
+    if (effectiveAdminId) {
+      const existingId = await User.findOne({ employeeId: effectiveAdminId });
+      if (existingId) {
+        return res.status(400).json({
+          success: false,
+          message: 'An administrator with this Administrator ID already exists.',
+        });
+      }
+    }
+
+    // 4. Create admin account - role is strictly forced to 'admin'
     const admin = await User.create({
       name: name.trim(),
       email: normalizedEmail,
@@ -261,8 +290,8 @@ const registerAdmin = async (req, res, next) => {
       role: 'admin',
       department: 'General Administration',
       designation: 'System Administrator',
-      employeeId: adminId ? adminId.trim() : (employeeId ? employeeId.trim() : 'ADM-001'),
-      phone: phone ? phone.trim() : '',
+      employeeId: effectiveAdminId || 'ADM-001',
+      phone: typeof phone === 'string' ? phone.trim() : '',
       status: 'active',
       isActive: true,
     });
