@@ -81,7 +81,7 @@ const CitizenDashboard = () => {
       <div
         className="card"
         style={{
-          background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)',
+          background: 'var(--navy)',
           color: 'white',
           padding: '2rem',
           borderRadius: 'var(--radius-lg)',
@@ -225,6 +225,7 @@ const CitizenDashboard = () => {
             placeholder="CIVIC-2026-XXXX"
             value={trackInput}
             onChange={(e) => setTrackInput(e.target.value)}
+            aria-label="Track grievance by tracking ID"
             style={{ textTransform: 'uppercase' }}
           />
           <button type="submit" className="btn btn-primary btn-sm">

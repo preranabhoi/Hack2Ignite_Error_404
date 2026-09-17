@@ -112,7 +112,7 @@ const OfficerDashboard = () => {
       <div
         className="card"
         style={{
-          background: 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)',
+          background: 'var(--teal)',
           color: 'white',
           padding: '2rem',
           borderRadius: 'var(--radius-lg)',
@@ -239,6 +239,7 @@ const OfficerDashboard = () => {
           {/* Priority Dropdown */}
           <select
             className="form-select"
+            aria-label="Filter assigned tasks by priority"
             value={selectedPriority}
             onChange={(e) => setSelectedPriority(e.target.value)}
           >
