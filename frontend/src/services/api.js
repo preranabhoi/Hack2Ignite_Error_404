@@ -108,8 +108,8 @@ export const grievanceService = {
 
 // Admin API Service
 export const adminService = {
-  getStats: async () => {
-    const response = await api.get('/admin/stats');
+  getStats: async (params = {}) => {
+    const response = await api.get('/admin/stats', { params });
     return response.data;
   },
   getGrievances: async (params = {}) => {

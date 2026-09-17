@@ -7,104 +7,124 @@ const { createNotification } = require('../services/notificationService');
 // @access  Private (Admin)
 const getAdminStats = async (req, res, next) => {
   try {
-    const allGrievances = await Grievance.find({});
+    const { range = '7d', startDate, endDate, department = 'All' } = req.query;
+    const now = new Date();
+    let periodStart = new Date(now);
+    let periodEnd = new Date(now);
 
-    const total = allGrievances.length;
-    const submitted = allGrievances.filter((g) => g.status === 'Submitted').length;
-    const underReview = allGrievances.filter((g) => g.status === 'Under Review').length;
-    const assigned = allGrievances.filter((g) => g.status === 'Assigned').length;
-    const inProgress = allGrievances.filter((g) => g.status === 'In Progress').length;
-    const resolved = allGrievances.filter((g) => g.status === 'Resolved').length;
-    const rejected = allGrievances.filter((g) => g.status === 'Rejected').length;
-
-    const criticalHigh = allGrievances.filter(
-      (g) => g.priority === 'Critical' || g.priority === 'High'
-    ).length;
-
-    // 1. Group by Category
-    const categoryMap = {};
-    allGrievances.forEach((g) => {
-      categoryMap[g.category] = (categoryMap[g.category] || 0) + 1;
-    });
-    const byCategory = Object.keys(categoryMap).map((cat) => ({
-      category: cat,
-      count: categoryMap[cat],
-      percentage: total > 0 ? ((categoryMap[cat] / total) * 100).toFixed(1) : 0,
-    }));
-
-    // 2. Group by Department
-    const deptMap = {};
-    allGrievances.forEach((g) => {
-      deptMap[g.department] = (deptMap[g.department] || 0) + 1;
-    });
-    const byDepartment = Object.keys(deptMap).map((dept) => ({
-      department: dept,
-      count: deptMap[dept],
-      percentage: total > 0 ? ((deptMap[dept] / total) * 100).toFixed(1) : 0,
-    }));
-
-    // 3. Group by Status
-    const byStatus = [
-      { status: 'Submitted', count: submitted, color: '#3b82f6' },
-      { status: 'Under Review', count: underReview, color: '#8b5cf6' },
-      { status: 'Assigned', count: assigned, color: '#0284c7' },
-      { status: 'In Progress', count: inProgress, color: '#d97706' },
-      { status: 'Resolved', count: resolved, color: '#10b981' },
-      { status: 'Rejected', count: rejected, color: '#ef4444' },
-    ];
-
-    // 4. Group by Priority
-    const byPriority = [
-      { priority: 'Critical', count: allGrievances.filter((g) => g.priority === 'Critical').length, color: '#ef4444' },
-      { priority: 'High', count: allGrievances.filter((g) => g.priority === 'High').length, color: '#f59e0b' },
-      { priority: 'Medium', count: allGrievances.filter((g) => g.priority === 'Medium').length, color: '#0284c7' },
-      { priority: 'Low', count: allGrievances.filter((g) => g.priority === 'Low').length, color: '#10b981' },
-    ];
-
-    // 5. Volume Trend over last 7 days
-    const last7Days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const displayLabel = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(d);
-      
-      const countForDay = allGrievances.filter((g) => {
-        const gDate = new Date(g.createdAt).toISOString().split('T')[0];
-        return gDate === dateStr;
-      }).length;
-
-      last7Days.push({
-        date: dateStr,
-        label: displayLabel,
-        count: countForDay,
-      });
+    if (range === 'custom' && (!startDate || !endDate)) {
+      return res.status(400).json({ success: false, message: 'Custom analytics range requires startDate and endDate.' });
     }
 
-    // Officer and citizen counts
-    const totalCitizens = await User.countDocuments({ role: 'citizen' });
-    const totalOfficers = await User.countDocuments({ role: 'officer' });
+    if (range === 'custom') {
+      periodStart = new Date(`${startDate}T00:00:00.000Z`);
+      periodEnd = new Date(`${endDate}T23:59:59.999Z`);
+    } else {
+      const days = { '7d': 7, '30d': 30, '90d': 90 }[range] || 7;
+      periodStart.setDate(periodStart.getDate() - days);
+    }
 
-    res.json({
-      success: true,
-      stats: {
-        total,
-        submitted,
-        underReview,
-        assigned,
-        inProgress,
-        resolved,
-        rejected,
-        criticalHigh,
-        totalCitizens,
-        totalOfficers,
-        byCategory,
-        byDepartment,
-        byStatus,
-        byPriority,
-        overTime: last7Days,
+    if (Number.isNaN(periodStart.getTime()) || Number.isNaN(periodEnd.getTime()) || periodStart >= periodEnd) {
+      return res.status(400).json({ success: false, message: 'Invalid analytics date range.' });
+    }
+
+    const filter = { createdAt: { $gte: periodStart, $lte: periodEnd } };
+    if (department && department !== 'All') filter.department = department;
+
+    const previousDuration = periodEnd.getTime() - periodStart.getTime();
+    const previousFilter = {
+      ...filter,
+      createdAt: {
+        $gte: new Date(periodStart.getTime() - previousDuration),
+        $lt: periodStart,
       },
-    });
+    };
+    const colors = {
+      Submitted: '#3b82f6', 'Under Review': '#8b5cf6', Assigned: '#0284c7',
+      'In Progress': '#d97706', Resolved: '#10b981', Rejected: '#ef4444',
+      Critical: '#ef4444', High: '#f59e0b', Medium: '#0284c7', Low: '#10b981',
+    };
+
+    const [analytics] = await Grievance.aggregate([
+      { $match: filter },
+      { $facet: {
+        totals: [{ $group: {
+          _id: null,
+          total: { $sum: 1 },
+          resolved: { $sum: { $cond: [{ $eq: ['$status', 'Resolved'] }, 1, 0] } },
+          pending: { $sum: { $cond: [{ $not: [{ $in: ['$status', ['Resolved', 'Rejected']] }] }, 1, 0] } },
+          highPriority: { $sum: { $cond: [{ $in: ['$priority', ['High', 'Critical']] }, 1, 0] } },
+          resolutionDays: { $push: { $cond: [
+            { $and: [{ $eq: ['$status', 'Resolved'] }, { $ne: ['$resolution.resolvedAt', null] }] },
+            { $divide: [{ $subtract: ['$resolution.resolvedAt', '$createdAt'] }, 86400000] },
+            null,
+          ] } },
+        } }],
+        status: [{ $group: { _id: '$status', count: { $sum: 1 } } }, { $sort: { count: -1 } }],
+        category: [{ $group: { _id: '$category', count: { $sum: 1 } } }, { $sort: { count: -1 } }],
+        department: [{ $group: {
+          _id: '$department',
+          count: { $sum: 1 },
+          pending: { $sum: { $cond: [{ $not: [{ $in: ['$status', ['Resolved', 'Rejected']] }] }, 1, 0] } },
+          resolved: { $sum: { $cond: [{ $eq: ['$status', 'Resolved'] }, 1, 0] } },
+        } }, { $sort: { pending: -1, count: -1 } }],
+        priority: [{ $group: { _id: '$priority', count: { $sum: 1 } } }, { $sort: { count: -1 } }],
+        overTime: [{ $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 },
+        } }, { $sort: { _id: 1 } }],
+        resolutionTrend: [{ $match: { status: 'Resolved', 'resolution.resolvedAt': { $ne: null } } }, { $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$resolution.resolvedAt' } },
+          averageDays: { $avg: { $divide: [{ $subtract: ['$resolution.resolvedAt', '$createdAt'] }, 86400000] } },
+          resolvedCount: { $sum: 1 },
+        } }, { $sort: { _id: 1 } }],
+      } },
+    ]);
+
+    const previous = await Grievance.aggregate([
+      { $match: previousFilter },
+      { $group: { _id: null, total: { $sum: 1 }, roads: { $sum: { $cond: [{ $eq: ['$category', 'Roads'] }, 1, 0] } } } },
+    ]);
+    const totals = analytics.totals[0] || { total: 0, resolved: 0, pending: 0, highPriority: 0, resolutionDays: [] };
+    const validResolutionDays = (totals.resolutionDays || []).filter((value) => value !== null);
+    const total = totals.total || 0;
+    const toDistribution = (items, key) => items.map((item) => ({
+      [key]: item._id,
+      count: item.count,
+      percentage: total ? Number(((item.count / total) * 100).toFixed(1)) : 0,
+      color: colors[item._id],
+    }));
+    const currentRoads = analytics.category.find((item) => item._id === 'Roads')?.count || 0;
+    const previousTotal = previous[0]?.total || 0;
+    const previousRoads = previous[0]?.roads || 0;
+    const roadChange = previousRoads ? Math.round(((currentRoads - previousRoads) / previousRoads) * 100) : null;
+    const insights = [];
+    if (roadChange !== null && roadChange !== 0) insights.push(`Road-related complaints ${roadChange > 0 ? 'increased' : 'decreased'} ${Math.abs(roadChange)}% compared with the previous period.`);
+    if (totals.highPriority > 0) insights.push(`${totals.highPriority} high or critical grievances need active follow-up.`);
+    if (analytics.department[0]) insights.push(`${analytics.department[0]._id} currently carries the highest workload with ${analytics.department[0].pending} pending grievances.`);
+    if (insights.length === 0) insights.push('No major trend requiring attention was detected for this period.');
+
+    res.json({ success: true, stats: {
+      total,
+      submitted: analytics.status.find((item) => item._id === 'Submitted')?.count || 0,
+      underReview: analytics.status.find((item) => item._id === 'Under Review')?.count || 0,
+      assigned: analytics.status.find((item) => item._id === 'Assigned')?.count || 0,
+      inProgress: analytics.status.find((item) => item._id === 'In Progress')?.count || 0,
+      rejected: analytics.status.find((item) => item._id === 'Rejected')?.count || 0,
+      resolved: totals.resolved || 0,
+      resolutionRate: total ? Number(((totals.resolved / total) * 100).toFixed(1)) : 0,
+      averageResolutionDays: validResolutionDays.length ? Number((validResolutionDays.reduce((sum, value) => sum + value, 0) / validResolutionDays.length).toFixed(1)) : 0,
+      pending: totals.pending || 0,
+      highPriority: totals.highPriority || 0,
+      byStatus: toDistribution(analytics.status, 'status'),
+      byCategory: toDistribution(analytics.category, 'category'),
+      byDepartment: analytics.department.map((item) => ({ department: item._id, count: item.count, pending: item.pending, resolved: item.resolved, percentage: total ? Number(((item.count / total) * 100).toFixed(1)) : 0 })),
+      byPriority: toDistribution(analytics.priority, 'priority'),
+      overTime: analytics.overTime.map((item) => ({ date: item._id, label: item._id, count: item.count })),
+      resolutionTrend: analytics.resolutionTrend.map((item) => ({ date: item._id, averageDays: Number(item.averageDays.toFixed(1)), resolvedCount: item.resolvedCount })),
+      insights,
+      comparison: { previousTotal, roadChange },
+      period: { start: periodStart, end: periodEnd, department },
+    } });
   } catch (error) {
     next(error);
   }

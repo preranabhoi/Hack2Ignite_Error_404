@@ -13,6 +13,9 @@ const AdminCharts = ({ stats = {} }) => {
     byDepartment = [],
     byStatus = [],
     overTime = [],
+    byPriority = [],
+    resolutionTrend = [],
+    insights = [],
     total = 0,
   } = stats;
 
@@ -188,7 +191,7 @@ const AdminCharts = ({ stats = {} }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
           <TrendingUp size={18} color="#059669" />
           <h3 style={{ fontSize: '1.05rem', margin: 0, color: 'var(--text-main)' }}>
-            7-Day Reporting Volume Trend
+            Complaints Over Time
           </h3>
         </div>
 
@@ -249,6 +252,55 @@ const AdminCharts = ({ stats = {} }) => {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
+          <BarChart3 size={18} color="#dc2626" />
+          <h3 style={{ fontSize: '1.05rem', margin: 0, color: 'var(--text-main)' }}>Priority Distribution</h3>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+          {byPriority.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No data available</p> : byPriority.map((item) => (
+            <div key={item.priority}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', marginBottom: '0.25rem' }}>
+                <strong>{item.priority}</strong><span>{item.count} ({item.percentage}%)</span>
+              </div>
+              <div style={{ height: '8px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${item.percentage}%`, background: item.color || 'var(--primary)' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
+          <TrendingUp size={18} color="#7c3aed" />
+          <h3 style={{ fontSize: '1.05rem', margin: 0, color: 'var(--text-main)' }}>Resolution Time Trend</h3>
+        </div>
+        {resolutionTrend.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No resolved grievances in this period</p> : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            {resolutionTrend.slice(-8).map((item) => (
+              <div key={item.date} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem' }}>
+                <span style={{ minWidth: '76px', color: 'var(--text-muted)' }}>{item.date}</span>
+                <div style={{ flex: 1, height: '8px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
+                  <div style={{ width: `${Math.min(item.averageDays * 10, 100)}%`, height: '100%', background: '#7c3aed' }} />
+                </div>
+                <strong>{item.averageDays}d</strong>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card" style={{ padding: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
+          <TrendingUp size={18} color="#0f766e" />
+          <h3 style={{ fontSize: '1.05rem', margin: 0 }}>Insights</h3>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+          {insights.map((insight, index) => <p key={index} style={{ margin: 0, color: 'var(--text-main)', fontSize: '0.875rem', lineHeight: 1.5 }}>• {insight}</p>)}
         </div>
       </div>
     </div>

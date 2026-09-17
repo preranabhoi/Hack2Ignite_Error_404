@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertOctagon,
+  Percent,
 } from 'lucide-react';
 
 const AdminStatsCards = ({ stats = {} }) => {
@@ -63,10 +64,31 @@ const AdminStatsCards = ({ stats = {} }) => {
     },
     {
       label: 'Critical & High',
-      value: stats.criticalHigh || 0,
+      value: stats.highPriority || stats.criticalHigh || 0,
       icon: AlertOctagon,
       color: '#dc2626',
       bg: '#fee2e2',
+    },
+    {
+      label: 'Resolution Rate',
+      value: `${stats.resolutionRate || 0}%`,
+      icon: Percent,
+      color: '#059669',
+      bg: '#ecfdf5',
+    },
+    {
+      label: 'Avg Resolution Time',
+      value: `${stats.averageResolutionDays || 0}d`,
+      icon: Clock,
+      color: '#7c3aed',
+      bg: '#f5f3ff',
+    },
+    {
+      label: 'Pending Grievances',
+      value: stats.pending || 0,
+      icon: AlertOctagon,
+      color: '#b45309',
+      bg: '#fffbeb',
     },
   ];
 

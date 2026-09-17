@@ -35,6 +35,12 @@ const AdminDashboard = () => {
     sortOrder: 'desc',
     sortBy: 'createdAt',
   });
+  const [analyticsFilters, setAnalyticsFilters] = useState({
+    range: '7d',
+    startDate: '',
+    endDate: '',
+    department: 'All',
+  });
 
   // Modal review state
   const [selectedGrievance, setSelectedGrievance] = useState(null);
@@ -44,7 +50,7 @@ const AdminDashboard = () => {
     setError(null);
     try {
       // 1. Fetch Stats
-      const statsRes = await adminService.getStats();
+      const statsRes = await adminService.getStats(analyticsFilters);
       if (statsRes.success) {
         setStats(statsRes.stats);
       }
@@ -70,6 +76,10 @@ const AdminDashboard = () => {
     filters.department,
     filters.priority,
     filters.sortOrder,
+    analyticsFilters.range,
+    analyticsFilters.startDate,
+    analyticsFilters.endDate,
+    analyticsFilters.department,
   ]);
 
   const handleFilterChange = (field, value) => {
@@ -77,6 +87,13 @@ const AdminDashboard = () => {
       ...prev,
       [field]: value,
     }));
+  };
+
+  const handleAnalyticsFilterChange = (field, value) => {
+    setAnalyticsFilters((prev) => ({ ...prev, [field]: value }));
+    if (field === 'department') {
+      setFilters((prev) => ({ ...prev, department: value }));
+    }
   };
 
   const handleResetFilters = () => {
@@ -149,6 +166,45 @@ const AdminDashboard = () => {
             <RotateCcw size={14} />
             <span>Refresh Live Data</span>
           </button>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem 1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', alignItems: 'end' }}>
+          <label className="form-group" style={{ margin: 0 }}>
+            <span className="form-label">Analytics period</span>
+            <select className="form-select" value={analyticsFilters.range} onChange={(e) => handleAnalyticsFilterChange('range', e.target.value)}>
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="90d">Last 90 days</option>
+              <option value="custom">Custom range</option>
+            </select>
+          </label>
+          <label className="form-group" style={{ margin: 0 }}>
+            <span className="form-label">Department</span>
+            <select className="form-select" value={analyticsFilters.department} onChange={(e) => handleAnalyticsFilterChange('department', e.target.value)}>
+              <option>All</option>
+              <option>Public Works & Roads</option>
+              <option>Waste Management</option>
+              <option>Water Supply & Sanitation</option>
+              <option>Electricity & Power</option>
+              <option>Health & Environment</option>
+              <option>Traffic & Transport</option>
+              <option>General Administration</option>
+            </select>
+          </label>
+          {analyticsFilters.range === 'custom' && (
+            <>
+              <label className="form-group" style={{ margin: 0 }}>
+                <span className="form-label">Start date</span>
+                <input type="date" className="form-input" value={analyticsFilters.startDate} onChange={(e) => handleAnalyticsFilterChange('startDate', e.target.value)} />
+              </label>
+              <label className="form-group" style={{ margin: 0 }}>
+                <span className="form-label">End date</span>
+                <input type="date" className="form-input" value={analyticsFilters.endDate} onChange={(e) => handleAnalyticsFilterChange('endDate', e.target.value)} />
+              </label>
+            </>
+          )}
         </div>
       </div>
 
