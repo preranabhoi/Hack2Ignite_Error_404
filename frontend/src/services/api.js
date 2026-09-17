@@ -104,6 +104,10 @@ export const grievanceService = {
     const response = await api.post(`/grievances/${id}/resolution-recommendation`);
     return response.data;
   },
+  chatAssistant: async (messages) => {
+    const response = await api.post('/grievances/assistant-chat', { messages });
+    return response.data;
+  },
 };
 
 // Admin API Service

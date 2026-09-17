@@ -1,7 +1,6 @@
-import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
 const DEFAULT_CENTER = [20.2961, 85.8245];
@@ -19,18 +18,14 @@ const markerIcon = new L.Icon({
 const hasCoordinates = (grievance) => {
   const latitude = Number(grievance?.location?.latitude);
   const longitude = Number(grievance?.location?.longitude);
-  return Number.isFinite(latitude) && Number.isFinite(longitude) && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
-};
-
-const MapResizeHandler = () => {
-  const map = useMap();
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => map.invalidateSize(), 100);
-    return () => window.clearTimeout(timer);
-  }, [map]);
-
-  return null;
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180
+  );
 };
 
 const formatDate = (date) => {
@@ -43,16 +38,112 @@ const formatDate = (date) => {
 };
 
 const GrievanceMap = ({ grievances = [], onMarkerClick, height = '520px', compact = false }) => {
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersLayerRef = useRef(null);
+  const navigate = useNavigate();
+
   const mappableGrievances = grievances.filter(hasCoordinates);
   const missingLocationCount = grievances.length - mappableGrievances.length;
-  const firstLocation = mappableGrievances[0];
-  const center = firstLocation
-    ? [Number(firstLocation.location.latitude), Number(firstLocation.location.longitude)]
-    : DEFAULT_CENTER;
+
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    if (!mapInstanceRef.current) {
+      const firstLocation = mappableGrievances[0];
+      const center = firstLocation
+        ? [Number(firstLocation.location.latitude), Number(firstLocation.location.longitude)]
+        : DEFAULT_CENTER;
+
+      const map = L.map(mapContainerRef.current, {
+        center,
+        zoom: compact ? 11 : 12,
+        scrollWheelZoom: !compact,
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(map);
+
+      markersLayerRef.current = L.layerGroup().addTo(map);
+      mapInstanceRef.current = map;
+    }
+
+    const map = mapInstanceRef.current;
+    const markersGroup = markersLayerRef.current;
+
+    if (markersGroup) {
+      markersGroup.clearLayers();
+
+      mappableGrievances.forEach((grievance) => {
+        const lat = Number(grievance.location.latitude);
+        const lng = Number(grievance.location.longitude);
+        const marker = L.marker([lat, lng], { icon: markerIcon });
+
+        const popupContent = document.createElement('div');
+        popupContent.style.minWidth = compact ? '180px' : '220px';
+        popupContent.style.fontSize = '0.82rem';
+
+        popupContent.innerHTML = `
+          <strong style="display:block;margin-bottom:0.35rem;font-size:0.9rem;">${grievance.title || 'Untitled Grievance'}</strong>
+          <div><b>Category:</b> ${grievance.category || 'N/A'}</div>
+          <div><b>Priority:</b> ${grievance.priority || 'N/A'}</div>
+          <div><b>Status:</b> ${grievance.status || 'N/A'}</div>
+          <div><b>Date:</b> ${formatDate(grievance.createdAt)}</div>
+          <div style="margin-top:0.5rem;">
+            <button class="btn btn-primary btn-sm" id="btn-view-${grievance._id}" style="width:100%;font-size:0.75rem;padding:0.3rem 0.5rem;cursor:pointer;">
+              Open Grievance
+            </button>
+          </div>
+        `;
+
+        const btn = popupContent.querySelector(`#btn-view-${grievance._id}`);
+        if (btn) {
+          btn.onclick = () => {
+            if (onMarkerClick) {
+              onMarkerClick(grievance);
+            } else {
+              navigate(`/grievances/${grievance._id}`);
+            }
+          };
+        }
+
+        marker.bindPopup(popupContent);
+        marker.addTo(markersGroup);
+      });
+
+      if (mappableGrievances.length > 0) {
+        const bounds = L.latLngBounds(
+          mappableGrievances.map((g) => [
+            Number(g.location.latitude),
+            Number(g.location.longitude),
+          ])
+        );
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+      }
+    }
+
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [grievances, compact]);
+
+  useEffect(() => {
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div>
       <div
+        ref={mapContainerRef}
         style={{
           height,
           width: '100%',
@@ -61,43 +152,7 @@ const GrievanceMap = ({ grievances = [], onMarkerClick, height = '520px', compac
           border: '1px solid var(--border-subtle)',
           backgroundColor: '#e2e8f0',
         }}
-      >
-        <MapContainer center={center} zoom={compact ? 11 : 12} scrollWheelZoom={!compact} style={{ height: '100%', width: '100%' }}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <MapResizeHandler />
-          {mappableGrievances.map((grievance) => (
-            <Marker
-              key={grievance._id}
-              position={[Number(grievance.location.latitude), Number(grievance.location.longitude)]}
-              icon={markerIcon}
-              eventHandlers={{ click: () => onMarkerClick?.(grievance) }}
-            >
-              <Popup>
-                <div style={{ minWidth: compact ? '180px' : '220px', fontSize: '0.82rem' }}>
-                  <strong style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.9rem' }}>{grievance.title}</strong>
-                  <div><b>Category:</b> {grievance.category || 'N/A'}</div>
-                  <div><b>Priority:</b> {grievance.priority || 'N/A'}</div>
-                  <div><b>Status:</b> {grievance.status || 'N/A'}</div>
-                  <div><b>Date:</b> {formatDate(grievance.createdAt)}</div>
-                  <div style={{ marginTop: '0.5rem' }}>
-                    {onMarkerClick ? (
-                      <button type="button" onClick={() => onMarkerClick(grievance)} className="btn btn-primary btn-sm">
-                        Open grievance
-                      </button>
-                    ) : (
-                      <Link to={`/grievances/${grievance._id}`}>Open grievance</Link>
-                    )}
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
-      </div>
-
+      />
       {mappableGrievances.length === 0 && (
         <p style={{ marginTop: '0.65rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           No grievances have usable latitude and longitude coordinates yet. Address details remain available in each grievance.

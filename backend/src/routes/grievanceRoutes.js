@@ -8,8 +8,12 @@ const {
   deleteGrievance,
   reanalyzeGrievance,
   generateGrievanceResolutionRecommendation,
+  chatCitizenAssistant,
 } = require('../controllers/grievanceController');
 const { protect, authorize } = require('../middleware/authMiddleware');
+
+// Citizen Assistant Chat
+router.post('/assistant-chat', protect, chatCitizenAssistant);
 
 // Citizen grievance routes
 router.post('/', protect, authorize('citizen'), createGrievance);

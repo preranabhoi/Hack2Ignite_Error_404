@@ -18,6 +18,7 @@ import OfficerDashboard from './pages/OfficerDashboard';
 import OfficerGrievanceDetailPage from './pages/OfficerGrievanceDetail';
 import AdminMapPage from './pages/AdminMapPage';
 import NotificationsPage from './pages/NotificationsPage';
+import CitizenAssistantWidget from './components/assistant/CitizenAssistantWidget';
 
 function App() {
   return (
@@ -114,6 +115,7 @@ function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
+          <CitizenAssistantWidget />
           <Footer />
         </div>
       </Router>

@@ -600,14 +600,212 @@ Return only valid JSON matching this schema:
   }
 };
 
+/**
+ * Validate and sanitize Citizen Assistant response
+ */
+const validateAssistantResponse = (parsed) => {
+  if (!parsed || typeof parsed !== 'object') {
+    return null;
+  }
+
+  const reply =
+    typeof parsed.reply === 'string' && parsed.reply.trim()
+      ? parsed.reply.trim()
+      : null;
+
+  if (!reply) {
+    return null;
+  }
+
+  let suggestedCategory = null;
+  if (parsed.suggestedCategory && typeof parsed.suggestedCategory === 'string') {
+    const matched = ALLOWED_CATEGORIES.find(
+      (c) => c.toLowerCase() === parsed.suggestedCategory.trim().toLowerCase()
+    );
+    suggestedCategory = matched || null;
+  }
+
+  let draftGrievance = null;
+  if (
+    parsed.draftGrievance &&
+    typeof parsed.draftGrievance === 'object' &&
+    typeof parsed.draftGrievance.title === 'string' &&
+    parsed.draftGrievance.title.trim() &&
+    typeof parsed.draftGrievance.description === 'string' &&
+    parsed.draftGrievance.description.trim()
+  ) {
+    let cat = parsed.draftGrievance.category;
+    const matchedCat = ALLOWED_CATEGORIES.find(
+      (c) => c.toLowerCase() === (cat || '').trim().toLowerCase()
+    );
+    draftGrievance = {
+      title: parsed.draftGrievance.title.trim().slice(0, 150),
+      description: parsed.draftGrievance.description.trim().slice(0, 3000),
+      category: matchedCat || suggestedCategory || 'Other',
+    };
+  }
+
+  return {
+    reply,
+    suggestedCategory: suggestedCategory || (draftGrievance ? draftGrievance.category : null),
+    draftGrievance,
+    readyToDraft: Boolean(parsed.readyToDraft || draftGrievance),
+  };
+};
+
+/**
+ * Rule-based fallback assistant for zero-dependency resilience
+ */
+const fallbackAssistantResponse = (userMessage = '', conversationHistory = []) => {
+  const content = `${conversationHistory.map((m) => m.content).join(' ')} ${userMessage}`.toLowerCase();
+
+  let category = 'Other';
+  let issueSummary = 'Civic issue reported by citizen';
+  let advice = '';
+
+  if (/garbage|waste|trash|dump|dustbin|litter|sanitary|debris/i.test(content)) {
+    category = 'Waste Management';
+    issueSummary = 'Uncollected garbage and sanitation hazard';
+    advice = 'To report waste issues effectively, please provide the exact spot (e.g., street name, near college gate), how long it has been accumulating, and attach a photo if possible.';
+  } else if (/pothole|road|asphalt|tar|crater|pavement|footpath|divider/i.test(content)) {
+    category = 'Roads';
+    issueSummary = 'Road surface damage / hazardous pothole';
+    advice = 'For road maintenance reports, please specify the exact landmark or street coordinates and mention if it is causing vehicular skids or traffic disruptions.';
+  } else if (/water|pipeline|leak|burst|drinking water|supply|tank|tap/i.test(content)) {
+    category = 'Water Supply';
+    issueSummary = 'Water supply disruption / pipeline leakage';
+    advice = 'Please mention if there is clean water wastage or pressure loss, and include the street name and nearby landmark.';
+  } else if (/light|street light|darkness|pole|lamp|bulb|illumination/i.test(content)) {
+    category = 'Street Lighting';
+    issueSummary = 'Non-functional street lighting';
+    advice = 'Please specify the pole number or landmark where the light is defective so maintenance teams can locate it quickly at night.';
+  } else if (/electric|power|wire|transformer|spark|shock|blackout|voltage/i.test(content)) {
+    category = 'Electricity';
+    issueSummary = 'Electrical fault / exposed wiring concern';
+    advice = 'If there are live hanging wires or sparking transformers, note that this is high urgency. Please provide the exact pole or transformer location.';
+  } else if (/drain|drainage|gutter|sewage|waterlogging|flood|clogged/i.test(content)) {
+    category = 'Drainage';
+    issueSummary = 'Blocked drain / sewage waterlogging';
+    advice = 'Please indicate if dirty water is entering premises or stagnant on public roads, along with the neighborhood ward.';
+  } else if (/safety|encroachment|illegal|hazard|stray animal|threat/i.test(content)) {
+    category = 'Public Safety';
+    issueSummary = 'Public safety / street obstruction issue';
+    advice = 'Please provide details on the location, nature of obstruction or safety hazard, and affected community.';
+  } else if (/pollution|smoke|chemical|tree|park|greenery|environment/i.test(content)) {
+    category = 'Environment';
+    issueSummary = 'Environmental pollution / public health concern';
+    advice = 'Please describe the source of pollution and the affected surroundings.';
+  } else {
+    advice = 'I can help guide you on reporting your civic issue. Please describe what is happening, where it is located, and how it impacts your area.';
+  }
+
+  const cleanUserText = userMessage.trim().replace(/^["']|["']$/g, '');
+  const title = cleanUserText.length > 5 && cleanUserText.length < 90
+    ? cleanUserText
+    : `${category} issue: ${issueSummary}`;
+
+  const description = cleanUserText.length > 20
+    ? cleanUserText
+    : `${issueSummary}. Reported by citizen for municipal inspection and corrective redressal.`;
+
+  const reply = `This appears to be a **${category}** issue. I can help guide you in reporting it to the municipal department.\n\n${advice}\n\nWould you like me to pre-fill your grievance form with this information?`;
+
+  return {
+    reply,
+    suggestedCategory: category,
+    draftGrievance: {
+      title,
+      description,
+      category,
+    },
+    readyToDraft: true,
+  };
+};
+
+/**
+ * Main Citizen Assistant handler
+ */
+const chatWithCitizenAssistant = async ({ messages = [], user = null }) => {
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1].content : '';
+
+  const prompt = `
+You are CivicAI Assistant, an intelligent, empathetic civic guide helping citizens understand how to report public grievances to local municipal authorities.
+
+CONVERSATION HISTORY:
+${JSON.stringify(messages.slice(-6).map((m) => ({ role: m.role, content: m.content })))}
+
+ALLOWED GRIEVANCE CATEGORIES:
+- Roads
+- Waste Management
+- Water Supply
+- Electricity
+- Street Lighting
+- Drainage
+- Public Safety
+- Environment
+- Other
+
+INSTRUCTIONS:
+1. Understand the citizen's civic problem (e.g. potholes, uncollected garbage, water leaks, dark streets, broken drains).
+2. Explain which category fits best from the Allowed Categories list.
+3. Explain what information makes a strong complaint (e.g. exact street address/landmark, description of disruption or safety hazard, photo evidence).
+4. Summarize their complaint into a ready-to-use title and description for their grievance draft.
+5. Set readyToDraft to true when there is enough context to draft a grievance.
+
+STRICT SAFETY & POLICY GUARDRAILS:
+- You are an AI informational guide only. You are NOT a government authority, police officer, or municipal executive.
+- Do NOT provide legal advice.
+- Do NOT guarantee or promise resolution timeframes or outcomes.
+- Do NOT access, reference, or expose any private citizen records or another user's complaints.
+- Remind the citizen that they must review and submit the grievance form manually.
+
+RETURN ONLY VALID JSON MATCHING THIS EXACT SCHEMA:
+{
+  "reply": "Friendly, helpful conversational response to the citizen",
+  "suggestedCategory": "One from Allowed Categories or null",
+  "draftGrievance": {
+    "title": "Concise issue title (max 100 chars)",
+    "description": "Clear detailed description for the grievance report",
+    "category": "One from Allowed Categories"
+  } | null,
+  "readyToDraft": true | false
+}
+`;
+
+  try {
+    const rawText = await callLLMAPI(prompt);
+    const parsed = extractJSON(rawText);
+    const validated = validateAssistantResponse(parsed);
+
+    if (validated) {
+      return {
+        ...validated,
+        source: 'llm',
+      };
+    }
+  } catch (error) {
+    console.warn('[CivicAI Service] Citizen Assistant LLM API unavailable, using fallback:', error.message);
+  }
+
+  // Use resilient fallback
+  const fallback = fallbackAssistantResponse(lastMessage, messages.slice(0, -1));
+  return {
+    ...fallback,
+    source: 'fallback',
+  };
+};
+
 module.exports = {
   analyzeGrievance,
   generateResolutionRecommendation,
   detectDuplicateGrievances,
+  chatWithCitizenAssistant,
   validateAIResponse,
   validateResolutionRecommendation,
   validateDuplicateDetection,
+  validateAssistantResponse,
   fallbackResolutionRecommendation,
+  fallbackAssistantResponse,
   ruleBasedAnalysis,
   ALLOWED_CATEGORIES,
   ALLOWED_DEPARTMENTS,

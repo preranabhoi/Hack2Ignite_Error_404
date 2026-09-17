@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   FilePlus,
   Building2,
@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   Loader2,
   Layers,
+  Sparkles,
 } from 'lucide-react';
 import { grievanceService } from '../services/api';
 
@@ -37,11 +38,15 @@ const PRIORITIES = [
 
 const CreateGrievancePage = () => {
   const navigate = useNavigate();
+  const locationState = useLocation();
+  const prefill = locationState.state?.prefill;
 
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    category: 'Roads',
+  const [formData, setFormData] = useState(() => ({
+    title: prefill?.title || '',
+    description: prefill?.description || '',
+    category: prefill?.category && CATEGORIES.some((c) => c.id === prefill.category)
+      ? prefill.category
+      : 'Roads',
     priority: 'Medium',
     location: {
       address: '',
@@ -53,7 +58,7 @@ const CreateGrievancePage = () => {
       longitude: null,
     },
     images: [],
-  });
+  }));
 
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -224,6 +229,29 @@ const CreateGrievancePage = () => {
             Submit your civic complaint for municipal review and field officer assignment.
           </p>
         </div>
+
+        {/* AI Guide Prefill Banner */}
+        {prefill && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              padding: '0.85rem 1rem',
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: 'var(--radius-md)',
+              color: '#166534',
+              fontSize: '0.875rem',
+              marginBottom: '1.5rem',
+            }}
+          >
+            <Sparkles size={18} color="#16a34a" style={{ flexShrink: 0 }} />
+            <span>
+              <strong>AI Citizen Guide pre-filled this draft.</strong> Please review the details below, set the exact incident location, and submit manually.
+            </span>
+          </div>
+        )}
 
         {/* Error Alert */}
         {error && (

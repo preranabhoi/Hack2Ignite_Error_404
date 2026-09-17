@@ -4,6 +4,7 @@ const {
   analyzeGrievance,
   generateResolutionRecommendation,
   detectDuplicateGrievances,
+  chatWithCitizenAssistant,
 } = require('../services/aiService');
 const { createNotification, notifyAdmins } = require('../services/notificationService');
 
@@ -522,6 +523,35 @@ const deleteGrievance = async (req, res, next) => {
   }
 };
 
+// @desc    Citizen AI Assistant conversation & grievance drafting
+// @route   POST /api/grievances/assistant-chat
+// @access  Private (Citizen / Authenticated Users)
+const chatCitizenAssistant = async (req, res, next) => {
+  try {
+    const { messages = [] } = req.body;
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide at least one message for the assistant.',
+      });
+    }
+
+    const assistantResult = await chatWithCitizenAssistant({
+      messages,
+      user: req.user,
+    });
+
+    res.json({
+      success: true,
+      message: 'Assistant response generated successfully',
+      data: assistantResult,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createGrievance,
   getMyGrievances,
@@ -531,4 +561,5 @@ module.exports = {
   reanalyzeGrievance,
   generateGrievanceResolutionRecommendation,
   reviewDuplicateDetection,
+  chatCitizenAssistant,
 };

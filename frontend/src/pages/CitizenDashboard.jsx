@@ -11,6 +11,9 @@ import {
   Search,
   PhoneCall,
   ShieldAlert,
+  Sparkles,
+  Bot,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { grievanceService } from '../services/api';
@@ -129,6 +132,64 @@ const CitizenDashboard = () => {
           <PlusCircle size={20} />
           <span>File New Grievance</span>
         </Link>
+      </div>
+
+      {/* AI Citizen Guide Assistant Callout */}
+      <div
+        className="card"
+        style={{
+          marginBottom: '2rem',
+          padding: '1.25rem 1.5rem',
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+          color: 'white',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid rgba(56, 189, 248, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1.25rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: '1', minWidth: '280px' }}>
+          <div
+            style={{
+              width: '3rem',
+              height: '3rem',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: '#0284c7',
+              color: '#fbbf24',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Bot size={26} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+              <h3 style={{ fontSize: '1.05rem', color: 'white', margin: 0 }}>
+                Unsure how to report an issue? Ask the AI Citizen Guide
+              </h3>
+              <span
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  backgroundColor: '#0369a1',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: 'var(--radius-full)',
+                  color: '#e0f2fe',
+                }}
+              >
+                AI Assistant
+              </span>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>
+              Tell our assistant what problem you see (e.g. garbage dump, road pothole, broken streetlight) — it will explain the process, suggest the department, and pre-fill your draft! Click the floating button at bottom right to chat anytime.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Quick Tracking Bar */}
