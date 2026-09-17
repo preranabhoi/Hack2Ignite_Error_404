@@ -7,7 +7,6 @@ import {
   ArrowRight,
   AlertCircle,
   Loader2,
-  Info,
   User,
   Wrench,
   ShieldAlert,
@@ -184,36 +183,6 @@ const LoginPage = () => {
             )}
           </button>
         </form>
-
-        {/* Minimal Hackathon Evaluation Note */}
-        <div
-          style={{
-            marginTop: '1.75rem',
-            backgroundColor: '#f8fafc',
-            borderRadius: 'var(--radius-md)',
-            padding: '0.85rem 1rem',
-            textAlign: 'center',
-            border: '1px solid var(--border-subtle)',
-          }}
-        >
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.2rem' }}>
-            <Info size={13} color="#4f46e5" />
-            <span
-              style={{
-                fontSize: '0.725rem',
-                color: '#4f46e5',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-              }}
-            >
-              FOR HACKATHON EVALUATION
-            </span>
-          </div>
-          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Quick Demo Access: Demo credentials are provided in the documentation.
-          </p>
-        </div>
 
         {/* Registration Options Section */}
         <div
