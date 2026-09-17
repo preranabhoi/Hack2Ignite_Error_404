@@ -1,6 +1,3 @@
-Absolutely — here is a **complete GitHub-ready `README.md`** for your CivicAI project. You can copy everything inside the code block directly into your `README.md`.
-
-````markdown
 # 🏛️ CivicAI
 
 ### AI-Powered Public Grievance Analysis & Resolution Recommendation Platform
