@@ -1,6 +1,10 @@
 const { Grievance, CATEGORY_DEPARTMENT_MAP } = require('../models/Grievance');
 const User = require('../models/User');
-const { analyzeGrievance, generateResolutionRecommendation } = require('../services/aiService');
+const {
+  analyzeGrievance,
+  generateResolutionRecommendation,
+  detectDuplicateGrievances,
+} = require('../services/aiService');
 
 // @desc    Create a new grievance & run lightweight AI analysis
 // @route   POST /api/grievances
@@ -95,13 +99,84 @@ const createGrievance = async (req, res, next) => {
       await savedGrievance.save();
     }
 
+    // Duplicate detection is advisory and must never block grievance submission.
+    let duplicateDetection = null;
+    try {
+      const recentCandidates = await Grievance.find({
+        _id: { $ne: savedGrievance._id },
+        category: savedGrievance.category,
+        status: { $nin: ['Resolved', 'Rejected'] },
+        createdAt: { $gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
+      })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .select('title description category department location status');
+
+      duplicateDetection = await detectDuplicateGrievances({
+        grievance: savedGrievance,
+        candidates: recentCandidates,
+      });
+
+      if (duplicateDetection) {
+        savedGrievance.duplicateDetection = duplicateDetection;
+        await savedGrievance.save();
+      }
+    } catch (duplicateError) {
+      console.warn('[CivicAI Controller] Duplicate detection skipped:', duplicateError.message);
+    }
+
     await savedGrievance.populate('citizenId', 'name email phone');
+    await savedGrievance.populate('duplicateDetection.relatedGrievanceIds', 'trackingId title status location');
 
     res.status(201).json({
       success: true,
-      message: 'Grievance submitted and analyzed successfully',
+      message: duplicateDetection?.isPotentialDuplicate
+        ? 'Grievance submitted. Similar complaints may already exist.'
+        : 'Grievance submitted and analyzed successfully',
       grievance: savedGrievance,
+      duplicateDetection,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Record an admin decision on a duplicate recommendation
+// @route   PATCH /api/admin/grievances/:id/duplicate-review
+// @access  Private (Admin)
+const reviewDuplicateDetection = async (req, res, next) => {
+  try {
+    const { decision, comment = '' } = req.body;
+    if (!['ignored', 'merged'].includes(decision)) {
+      return res.status(400).json({ success: false, message: 'Decision must be ignored or merged.' });
+    }
+
+    const grievance = await Grievance.findById(req.params.id);
+    if (!grievance) {
+      return res.status(404).json({ success: false, message: 'Grievance not found' });
+    }
+
+    if (!grievance.duplicateDetection?.isPotentialDuplicate) {
+      return res.status(400).json({ success: false, message: 'No pending duplicate recommendation exists.' });
+    }
+
+    grievance.duplicateDetection.reviewStatus = decision;
+    grievance.duplicateDetection.reviewedBy = req.user._id;
+    grievance.duplicateDetection.reviewedAt = new Date();
+    grievance.duplicateDetection.reviewComment = comment.trim();
+    grievance.statusHistory.push({
+      status: grievance.status,
+      changedBy: req.user._id,
+      comment: decision === 'merged'
+        ? 'Admin confirmed related grievance records. Original records and citizen histories were preserved.'
+        : 'Admin dismissed the possible duplicate recommendation.',
+      timestamp: new Date(),
+    });
+
+    const updated = await grievance.save();
+    await updated.populate('duplicateDetection.relatedGrievanceIds', 'trackingId title status location');
+
+    res.json({ success: true, message: `Duplicate recommendation marked as ${decision}.`, grievance: updated });
   } catch (error) {
     next(error);
   }
@@ -269,7 +344,8 @@ const getGrievanceById = async (req, res, next) => {
       .populate('citizenId', 'name email phone address')
       .populate('assignedOfficer', 'name email department designation phone')
       .populate('statusHistory.changedBy', 'name role')
-      .populate('resolution.resolvedBy', 'name role designation');
+      .populate('resolution.resolvedBy', 'name role designation')
+      .populate('duplicateDetection.relatedGrievanceIds', 'trackingId title status location');
 
     if (!grievance) {
       return res.status(404).json({
@@ -431,4 +507,5 @@ module.exports = {
   deleteGrievance,
   reanalyzeGrievance,
   generateGrievanceResolutionRecommendation,
+  reviewDuplicateDetection,
 };

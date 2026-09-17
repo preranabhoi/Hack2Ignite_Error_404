@@ -131,6 +131,13 @@ export const adminService = {
     });
     return response.data;
   },
+  reviewDuplicateDetection: async (id, { decision, comment = '' }) => {
+    const response = await api.patch(`/admin/grievances/${id}/duplicate-review`, {
+      decision,
+      comment,
+    });
+    return response.data;
+  },
 };
 
 // Officer API Service

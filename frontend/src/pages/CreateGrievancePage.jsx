@@ -168,7 +168,10 @@ const CreateGrievancePage = () => {
       const res = await grievanceService.create(formData);
       if (res.success) {
         navigate(`/grievances/${res.grievance._id}`, {
-          state: { newlyCreated: true },
+          state: {
+            newlyCreated: true,
+            duplicateDetection: res.duplicateDetection,
+          },
         });
       }
     } catch (err) {

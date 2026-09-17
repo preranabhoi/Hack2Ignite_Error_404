@@ -168,6 +168,7 @@ const getAllGrievances = async (req, res, next) => {
       .populate('citizenId', 'name email phone address')
       .populate('assignedOfficer', 'name email department designation phone employeeId availabilityStatus')
       .populate('resolution.resolvedBy', 'name role designation')
+      .populate('duplicateDetection.relatedGrievanceIds', 'trackingId title status location')
       .sort(sortOptions)
       .skip(skip)
       .limit(limitNum);

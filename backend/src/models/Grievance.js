@@ -147,6 +147,33 @@ const grievanceSchema = new mongoose.Schema(
       analyzedAt: { type: Date, default: null },
       rawResponse: { type: String, select: false },
     },
+    duplicateDetection: {
+      isPotentialDuplicate: { type: Boolean, default: false },
+      confidence: {
+        type: String,
+        enum: ['low', 'medium', 'high'],
+        default: null,
+      },
+      relatedGrievanceIds: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Grievance',
+        },
+      ],
+      reason: { type: String, default: '' },
+      reviewStatus: {
+        type: String,
+        enum: ['pending', 'ignored', 'merged'],
+        default: 'pending',
+      },
+      reviewedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
+      },
+      reviewedAt: { type: Date, default: null },
+      reviewComment: { type: String, default: '' },
+    },
     resolution: {
       resolvedBy: {
         type: mongoose.Schema.Types.ObjectId,

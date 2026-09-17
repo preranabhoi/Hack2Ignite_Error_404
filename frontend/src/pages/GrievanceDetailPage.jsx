@@ -27,6 +27,7 @@ import StatusTimeline from '../components/common/StatusTimeline';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
 import GrievanceMap from '../components/common/GrievanceMap';
+import DuplicateGrievanceAlert from '../components/common/DuplicateGrievanceAlert';
 
 const CATEGORIES = [
   { id: 'Roads', label: 'Roads & Potholes' },
@@ -176,6 +177,9 @@ const GrievanceDetailPage = () => {
 
   const canEdit = ['Submitted', 'Under Review'].includes(grievance.status);
   const canDelete = grievance.status === 'Submitted';
+  const duplicateGrievance = location.state?.duplicateDetection
+    ? { ...grievance, duplicateDetection: location.state.duplicateDetection }
+    : grievance;
 
   return (
     <div className="app-container main-content" style={{ maxWidth: '980px' }}>
@@ -233,6 +237,7 @@ const GrievanceDetailPage = () => {
 
       {/* Main Grievance Card */}
       <div className="card-elevated" style={{ marginBottom: '2rem' }}>
+        <DuplicateGrievanceAlert grievance={duplicateGrievance} />
         {/* Header: Tracking ID & Badges */}
         <div
           style={{

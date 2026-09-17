@@ -141,6 +141,37 @@ const validateResolutionRecommendation = (parsed) => {
   };
 };
 
+const validateDuplicateDetection = (parsed, candidateIds = []) => {
+  if (!parsed || typeof parsed !== 'object' || typeof parsed.isPotentialDuplicate !== 'boolean') {
+    return null;
+  }
+
+  const allowedIds = new Set(candidateIds.map((id) => id.toString()));
+  const relatedGrievanceIds = Array.isArray(parsed.relatedGrievanceIds)
+    ? parsed.relatedGrievanceIds
+      .filter((id) => typeof id === 'string' && allowedIds.has(id))
+      .slice(0, 5)
+    : [];
+  const confidence = ['low', 'medium', 'high'].includes(parsed.confidence)
+    ? parsed.confidence
+    : 'low';
+
+  if (
+    parsed.isPotentialDuplicate && relatedGrievanceIds.length === 0 ||
+    typeof parsed.reason !== 'string' ||
+    !parsed.reason.trim()
+  ) {
+    return null;
+  }
+
+  return {
+    isPotentialDuplicate: parsed.isPotentialDuplicate,
+    confidence: parsed.isPotentialDuplicate ? confidence : 'low',
+    relatedGrievanceIds,
+    reason: parsed.reason.trim(),
+  };
+};
+
 const fallbackResolutionRecommendation = ({
   category = 'Other',
   department = 'General Administration',
@@ -521,11 +552,61 @@ Return only valid JSON matching this schema exactly:
   };
 };
 
+const detectDuplicateGrievances = async ({ grievance, candidates = [] }) => {
+  if (!grievance || candidates.length === 0) return null;
+
+  const prompt = `
+You are CivicAI, an advisory duplicate grievance detector.
+Compare the new grievance with the candidate unresolved grievances using title, description, category, and location.
+Only mark a duplicate when they likely describe the same civic issue at the same or nearby place.
+Never merge records and do not infer duplicate status from category alone.
+
+New grievance:
+${JSON.stringify({
+  title: grievance.title,
+  description: grievance.description,
+  category: grievance.category,
+  department: grievance.department,
+  location: grievance.location,
+})}
+
+Candidate grievances:
+${JSON.stringify(candidates.map((candidate) => ({
+  id: candidate._id.toString(),
+  title: candidate.title,
+  description: candidate.description,
+  category: candidate.category,
+  department: candidate.department,
+  location: candidate.location,
+  status: candidate.status,
+})))}
+
+Return only valid JSON matching this schema:
+{
+  "isPotentialDuplicate": true,
+  "confidence": "low | medium | high",
+  "relatedGrievanceIds": ["candidate id"],
+  "reason": "Brief evidence-based explanation"
+}
+`;
+
+  try {
+    const parsed = extractJSON(await callLLMAPI(prompt));
+    const validated = validateDuplicateDetection(parsed, candidates.map((candidate) => candidate._id));
+    return validated ? { ...validated, detectedAt: new Date() } : null;
+  } catch (error) {
+    console.warn('[CivicAI Service] Duplicate detection API unavailable:', error.message);
+    return null;
+  }
+};
+
 module.exports = {
   analyzeGrievance,
   generateResolutionRecommendation,
+  detectDuplicateGrievances,
   validateAIResponse,
   validateResolutionRecommendation,
+  validateDuplicateDetection,
   fallbackResolutionRecommendation,
   ruleBasedAnalysis,
   ALLOWED_CATEGORIES,

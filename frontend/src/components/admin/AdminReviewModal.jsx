@@ -21,6 +21,7 @@ import StatusBadge from '../common/StatusBadge';
 import PriorityBadge from '../common/PriorityBadge';
 import StatusTimeline from '../common/StatusTimeline';
 import AIResolutionRecommendation from '../common/AIResolutionRecommendation';
+import DuplicateGrievanceAlert from '../common/DuplicateGrievanceAlert';
 import { adminService } from '../../services/api';
 
 const STATUS_LIST = [
@@ -298,6 +299,12 @@ const AdminReviewModal = ({ grievance, onClose, onUpdated }) => {
             <span>{feedback.message}</span>
           </div>
         )}
+
+        <DuplicateGrievanceAlert
+          grievance={grievance}
+          adminMode
+          onReviewed={(updatedGrievance) => onUpdated?.(updatedGrievance)}
+        />
 
         {/* 2-Column Layout: Left = Grievance Details & AI, Right = Admin Action Panel */}
         <div
