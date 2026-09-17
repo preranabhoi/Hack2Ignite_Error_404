@@ -11,6 +11,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import NotificationBell from './NotificationBell';
 
 const Navbar = () => {
   const { user, isAuthenticated, role, logout } = useAuth();
@@ -123,6 +124,7 @@ const Navbar = () => {
         <div className="user-menu">
           {isAuthenticated ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <NotificationBell />
               <div className="user-pill">
                 <div className="user-avatar">
                   {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}

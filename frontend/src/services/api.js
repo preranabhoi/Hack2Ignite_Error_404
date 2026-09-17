@@ -59,6 +59,21 @@ export const authService = {
   },
 };
 
+export const notificationService = {
+  getAll: async (limit = 30) => {
+    const response = await api.get('/notifications', { params: { limit } });
+    return response.data;
+  },
+  markRead: async (id) => {
+    const response = await api.patch(`/notifications/${id}/read`);
+    return response.data;
+  },
+  markAllRead: async () => {
+    const response = await api.patch('/notifications/read-all');
+    return response.data;
+  },
+};
+
 // Grievance API Service
 export const grievanceService = {
   create: async (grievanceData) => {

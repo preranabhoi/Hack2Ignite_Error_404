@@ -10,6 +10,7 @@ const authRoutes = require('./routes/authRoutes');
 const grievanceRoutes = require('./routes/grievanceRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const officerRoutes = require('./routes/officerRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const User = require('./models/User');
 const { seedUsers } = require('./utils/seed');
 
@@ -63,6 +64,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/grievances', grievanceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/officer', officerRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Error Handling Middleware
 app.use(notFound);

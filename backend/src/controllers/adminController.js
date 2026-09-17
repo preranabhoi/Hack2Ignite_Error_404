@@ -1,5 +1,6 @@
 const { Grievance, CATEGORY_DEPARTMENT_MAP } = require('../models/Grievance');
 const User = require('../models/User');
+const { createNotification } = require('../services/notificationService');
 
 // @desc    Get aggregate statistics and chart data for Admin Dashboard
 // @route   GET /api/admin/stats
@@ -263,6 +264,20 @@ const assignOfficer = async (req, res, next) => {
     });
 
     const updated = await grievance.save();
+    await createNotification({
+      userId: grievance.citizenId,
+      title: 'Grievance assigned',
+      message: `${grievance.trackingId} has been assigned to the ${officer.department} department.`,
+      type: 'assignment',
+      relatedGrievanceId: grievance._id,
+    });
+    await createNotification({
+      userId: officer._id,
+      title: 'New grievance assigned',
+      message: `${grievance.trackingId}: ${grievance.title}`,
+      type: 'assignment',
+      relatedGrievanceId: grievance._id,
+    });
     await updated.populate([
       { path: 'citizenId', select: 'name email phone address' },
       { path: 'assignedOfficer', select: 'name email department designation phone employeeId' },
@@ -329,6 +344,22 @@ const updateGrievanceStatus = async (req, res, next) => {
     });
 
     const updated = await grievance.save();
+    await createNotification({
+      userId: grievance.citizenId,
+      title: `Grievance status: ${status}`,
+      message: `${grievance.trackingId} moved from ${oldStatus} to ${status}.`,
+      type: status === 'Resolved' ? 'resolution' : 'status_change',
+      relatedGrievanceId: grievance._id,
+    });
+    if (grievance.assignedOfficer && comment) {
+      await createNotification({
+        userId: grievance.assignedOfficer,
+        title: 'Admin added a grievance note',
+        message: comment,
+        type: 'admin_note',
+        relatedGrievanceId: grievance._id,
+      });
+    }
     await updated.populate([
       { path: 'citizenId', select: 'name email phone address' },
       { path: 'assignedOfficer', select: 'name email department designation phone' },
@@ -392,6 +423,15 @@ const overrideGrievance = async (req, res, next) => {
     });
 
     const updated = await grievance.save();
+    if (changes.some((change) => change.startsWith('Priority')) && grievance.assignedOfficer) {
+      await createNotification({
+        userId: grievance.assignedOfficer,
+        title: 'Grievance priority changed',
+        message: `${grievance.trackingId} priority was updated by an administrator.`,
+        type: 'priority_change',
+        relatedGrievanceId: grievance._id,
+      });
+    }
     await updated.populate([
       { path: 'citizenId', select: 'name email phone address' },
       { path: 'assignedOfficer', select: 'name email department designation phone' },

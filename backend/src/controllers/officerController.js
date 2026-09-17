@@ -1,5 +1,6 @@
 const { Grievance } = require('../models/Grievance');
 const User = require('../models/User');
+const { createNotification } = require('../services/notificationService');
 
 // @desc    Get dashboard metrics for logged-in Officer
 // @route   GET /api/officer/stats
@@ -171,6 +172,13 @@ const acceptAssignment = async (req, res, next) => {
     });
 
     const updated = await grievance.save();
+    await createNotification({
+      userId: grievance.citizenId,
+      title: 'Grievance status updated',
+      message: `${grievance.trackingId} is now Under Review.`,
+      type: 'status_change',
+      relatedGrievanceId: grievance._id,
+    });
     await updated.populate([
       { path: 'citizenId', select: 'name email phone address' },
       { path: 'assignedOfficer', select: 'name email department designation phone' },
@@ -222,6 +230,13 @@ const startWork = async (req, res, next) => {
     });
 
     const updated = await grievance.save();
+    await createNotification({
+      userId: grievance.citizenId,
+      title: 'Grievance status updated',
+      message: `${grievance.trackingId} is now In Progress.`,
+      type: 'status_change',
+      relatedGrievanceId: grievance._id,
+    });
     await updated.populate([
       { path: 'citizenId', select: 'name email phone address' },
       { path: 'assignedOfficer', select: 'name email department designation phone' },
@@ -275,6 +290,13 @@ const addProgressNote = async (req, res, next) => {
     });
 
     const updated = await grievance.save();
+    await createNotification({
+      userId: grievance.citizenId,
+      title: 'Progress update received',
+      message: `${grievance.trackingId}: ${note.trim()}`,
+      type: 'progress',
+      relatedGrievanceId: grievance._id,
+    });
     await updated.populate([
       { path: 'citizenId', select: 'name email phone address' },
       { path: 'assignedOfficer', select: 'name email department designation phone' },
@@ -336,6 +358,13 @@ const resolveGrievance = async (req, res, next) => {
     });
 
     const updated = await grievance.save();
+    await createNotification({
+      userId: grievance.citizenId,
+      title: 'Grievance resolved',
+      message: `${grievance.trackingId} was marked resolved by the field officer.`,
+      type: 'resolution',
+      relatedGrievanceId: grievance._id,
+    });
     await updated.populate([
       { path: 'citizenId', select: 'name email phone address' },
       { path: 'assignedOfficer', select: 'name email department designation phone' },

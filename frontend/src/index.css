@@ -144,6 +144,61 @@ a:hover {
   font-size: 0.9rem;
 }
 
+.notification-count {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.2rem;
+  border-radius: var(--radius-full);
+  background: #dc2626;
+  color: white;
+  font-size: 0.65rem;
+  line-height: 1.05rem;
+  text-align: center;
+  font-weight: 800;
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 0.65rem);
+  right: 0;
+  z-index: 30;
+  width: min(360px, calc(100vw - 2rem));
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.notification-dropdown-header,
+.notification-view-all {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.8rem 1rem;
+}
+
+.notification-dropdown-header { border-bottom: 1px solid var(--border-subtle); }
+.notification-action { border: 0; background: transparent; color: var(--primary); cursor: pointer; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.25rem; }
+.notification-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.notification-list { max-height: 360px; overflow-y: auto; }
+.notification-item { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; width: 100%; border: 0; border-bottom: 1px solid var(--border-subtle); padding: 0.8rem 1rem; background: var(--bg-surface); text-align: left; cursor: pointer; }
+.notification-item:hover, .notification-page-item:hover { background: var(--bg-subtle); }
+.notification-item.unread, .notification-page-item.unread { background: var(--primary-light); }
+.notification-item-title { font-weight: 700; font-size: 0.8rem; color: var(--text-main); }
+.notification-item-message { color: var(--text-muted); font-size: 0.78rem; line-height: 1.4; }
+.notification-item-date { color: var(--text-subtle); font-size: 0.68rem; }
+.notification-empty { color: var(--text-muted); text-align: center; font-size: 0.85rem; }
+.notification-view-all { justify-content: center; color: var(--primary); font-size: 0.8rem; border-top: 1px solid var(--border-subtle); }
+.notification-page-item { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 1rem; border: 0; border-bottom: 1px solid var(--border-subtle); padding: 1rem 1.25rem; background: var(--bg-surface); text-align: left; cursor: pointer; color: var(--text-main); }
+.notification-page-item strong { font-size: 0.9rem; }
+.notification-page-item p { color: var(--text-muted); font-size: 0.85rem; margin: 0.25rem 0; }
+.notification-page-item small { color: var(--text-subtle); font-size: 0.72rem; }
+
 .leaflet-container {
   font-family: var(--font-sans);
   z-index: 0;

@@ -5,6 +5,7 @@ const {
   generateResolutionRecommendation,
   detectDuplicateGrievances,
 } = require('../services/aiService');
+const { createNotification, notifyAdmins } = require('../services/notificationService');
 
 // @desc    Create a new grievance & run lightweight AI analysis
 // @route   POST /api/grievances
@@ -127,6 +128,28 @@ const createGrievance = async (req, res, next) => {
 
     await savedGrievance.populate('citizenId', 'name email phone');
     await savedGrievance.populate('duplicateDetection.relatedGrievanceIds', 'trackingId title status location');
+
+    await createNotification({
+      userId: savedGrievance.citizenId._id,
+      title: 'Grievance submitted',
+      message: `Your grievance ${savedGrievance.trackingId} was submitted successfully.`,
+      type: 'submission',
+      relatedGrievanceId: savedGrievance._id,
+    });
+    await notifyAdmins({
+      title: 'New grievance received',
+      message: `${savedGrievance.trackingId}: ${savedGrievance.title}`,
+      type: 'submission',
+      relatedGrievanceId: savedGrievance._id,
+    });
+    if (['High', 'Critical'].includes(savedGrievance.priority)) {
+      await notifyAdmins({
+        title: `${savedGrievance.priority} grievance requires attention`,
+        message: `${savedGrievance.trackingId} is an unresolved ${savedGrievance.priority.toLowerCase()} priority grievance.`,
+        type: 'admin_alert',
+        relatedGrievanceId: savedGrievance._id,
+      });
+    }
 
     res.status(201).json({
       success: true,
