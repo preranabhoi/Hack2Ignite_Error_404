@@ -365,9 +365,9 @@ const RegisterPage = () => {
             color: 'var(--text-muted)',
           }}
         >
-          Already registered?{' '}
+          Already have an account?{' '}
           <Link to="/login" style={{ fontWeight: 600 }}>
-            Sign In here
+            Sign In
           </Link>
         </div>
       </div>

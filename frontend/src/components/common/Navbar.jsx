@@ -108,10 +108,20 @@ const Navbar = () => {
                   <li>
                     <NavLink
                       to="/admin"
+                      end
                       className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
                     >
                       <LayoutDashboard size={16} />
-                      <span>Admin Oversight</span>
+                      <span>Grievance Oversight</span>
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink
+                      to="/admin?tab=officers"
+                      className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                    >
+                      <Users size={16} />
+                      <span>Officer Management</span>
                     </NavLink>
                   </li>
                 </>

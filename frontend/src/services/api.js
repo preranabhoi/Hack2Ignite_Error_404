@@ -46,7 +46,19 @@ export const authService = {
     return response.data;
   },
   register: async (userData) => {
-    const response = await api.post('/auth/register', userData);
+    const response = await api.post('/auth/register/citizen', userData);
+    return response.data;
+  },
+  registerCitizen: async (userData) => {
+    const response = await api.post('/auth/register/citizen', userData);
+    return response.data;
+  },
+  registerOfficer: async (officerData) => {
+    const response = await api.post('/auth/register/officer', officerData);
+    return response.data;
+  },
+  registerAdmin: async (adminData) => {
+    const response = await api.post('/auth/register/admin', adminData);
     return response.data;
   },
   getMe: async () => {
@@ -120,9 +132,29 @@ export const adminService = {
     const response = await api.get('/admin/grievances', { params });
     return response.data;
   },
-  getOfficers: async (department) => {
-    const params = department ? { department } : {};
-    const response = await api.get('/admin/officers', { params });
+  getOfficers: async (params = {}) => {
+    const queryParams = typeof params === 'string' ? { department: params } : params;
+    const response = await api.get('/admin/officers', { params: queryParams });
+    return response.data;
+  },
+  getOfficerById: async (id) => {
+    const response = await api.get(`/admin/officers/${id}`);
+    return response.data;
+  },
+  createOfficer: async (officerData) => {
+    const response = await api.post('/admin/officers', officerData);
+    return response.data;
+  },
+  updateOfficer: async (id, officerData) => {
+    const response = await api.patch(`/admin/officers/${id}`, officerData);
+    return response.data;
+  },
+  updateOfficerStatus: async (id, statusData) => {
+    const response = await api.patch(`/admin/officers/${id}/status`, statusData);
+    return response.data;
+  },
+  deleteOfficer: async (id) => {
+    const response = await api.delete(`/admin/officers/${id}`);
     return response.data;
   },
   assignOfficer: async (id, { officerId, notes }) => {

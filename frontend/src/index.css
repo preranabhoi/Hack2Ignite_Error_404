@@ -907,3 +907,64 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* ==========================================================================
+   Role Registration Cards on Login Page
+   ========================================================================== */
+.register-role-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.15rem 0.85rem;
+  background-color: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: var(--text-main);
+  transition: all var(--transition-normal);
+  cursor: pointer;
+  position: relative;
+  box-shadow: var(--shadow-sm);
+  height: 100%;
+}
+
+.register-role-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.register-role-card.citizen:hover {
+  border-color: #93c5fd;
+  background-color: #fafcff;
+}
+
+.register-role-card.officer:hover {
+  border-color: #99f6e4;
+  background-color: #fafffe;
+}
+
+.register-role-card.admin:hover {
+  border-color: #c7d2fe;
+  background-color: #fafaff;
+}
+
+.register-role-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.register-role-card .role-icon-box {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.65rem;
+  transition: transform var(--transition-fast);
+}
+
+.register-role-card:hover .role-icon-box {
+  transform: scale(1.06);
+}

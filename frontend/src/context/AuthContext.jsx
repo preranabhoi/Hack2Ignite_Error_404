@@ -55,11 +55,51 @@ export const AuthProvider = ({ children }) => {
     return res;
   };
 
+  const registerCitizen = async (userData) => {
+    const res = await authService.registerCitizen(userData);
+    if (res.success) {
+      setToken(res.token);
+      setUser(res.user);
+      localStorage.setItem('civicai_token', res.token);
+      localStorage.setItem('civicai_user', JSON.stringify(res.user));
+    }
+    return res;
+  };
+
+  const registerOfficer = async (officerData) => {
+    const res = await authService.registerOfficer(officerData);
+    if (res.success) {
+      setToken(res.token);
+      setUser(res.user);
+      localStorage.setItem('civicai_token', res.token);
+      localStorage.setItem('civicai_user', JSON.stringify(res.user));
+    }
+    return res;
+  };
+
+  const registerAdmin = async (adminData) => {
+    const res = await authService.registerAdmin(adminData);
+    if (res.success) {
+      setToken(res.token);
+      setUser(res.user);
+      localStorage.setItem('civicai_token', res.token);
+      localStorage.setItem('civicai_user', JSON.stringify(res.user));
+    }
+    return res;
+  };
+
   const demoLogin = async (roleType = 'citizen') => {
     const roleCredentials = {
       citizen: { email: 'citizen@civicai.gov', password: 'password123' },
       officer: { email: 'officer.pwd@civicai.gov', password: 'password123' },
+      officerPwd: { email: 'officer.pwd@civicai.gov', password: 'password123' },
+      officerWater: { email: 'officer.water@civicai.gov', password: 'password123' },
       waterOfficer: { email: 'officer.water@civicai.gov', password: 'password123' },
+      officerElectricity: { email: 'officer.electricity@civicai.gov', password: 'password123' },
+      electricityOfficer: { email: 'officer.electricity@civicai.gov', password: 'password123' },
+      powerOfficer: { email: 'officer.electricity@civicai.gov', password: 'password123' },
+      officerWaste: { email: 'officer.waste@civicai.gov', password: 'password123' },
+      wasteOfficer: { email: 'officer.waste@civicai.gov', password: 'password123' },
       admin: { email: 'admin@civicai.gov', password: 'password123' },
     };
 
@@ -90,6 +130,9 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         login,
         register,
+        registerCitizen,
+        registerOfficer,
+        registerAdmin,
         demoLogin,
         logout,
         updateUser,

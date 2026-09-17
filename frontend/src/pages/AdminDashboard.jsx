@@ -7,23 +7,50 @@ import {
   Sparkles,
   Download,
   PlusCircle,
+  FileText,
+  MapPin,
+  BarChart3,
 } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { adminService } from '../services/api';
 import AdminStatsCards from '../components/admin/AdminStatsCards';
 import AdminCharts from '../components/admin/AdminCharts';
 import AdminGrievanceTable from '../components/admin/AdminGrievanceTable';
 import AdminReviewModal from '../components/admin/AdminReviewModal';
+import OfficerManagement from '../components/admin/OfficerManagement';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
 import GrievanceMap from '../components/common/GrievanceMap';
-import { Link } from 'react-router-dom';
 
 const AdminDashboard = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'officers' ? 'officers' : 'grievances';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
   const [stats, setStats] = useState({});
   const [grievances, setGrievances] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Sync tab with URL search parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'officers' && activeTab !== 'officers') {
+      setActiveTab('officers');
+    } else if (!tabParam && activeTab !== 'grievances') {
+      setActiveTab('grievances');
+    }
+  }, [searchParams]);
+
+  const handleTabSwitch = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'officers') {
+      setSearchParams({ tab: 'officers' });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   // Filters for Table
   const [filters, setFilters] = useState({
@@ -69,8 +96,11 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    if (activeTab === 'grievances') {
+      fetchDashboardData();
+    }
   }, [
+    activeTab,
     filters.status,
     filters.category,
     filters.department,
@@ -109,18 +139,9 @@ const AdminDashboard = () => {
   };
 
   const handleGrievanceUpdated = (updatedGrievance) => {
-    // Refresh table and stats
     setSelectedGrievance(null);
     fetchDashboardData();
   };
-
-  if (loading && Object.keys(stats).length === 0) {
-    return <LoadingState message="Loading Municipal Administration Command Center..." />;
-  }
-
-  if (error && Object.keys(stats).length === 0) {
-    return <ErrorState message={error} onRetry={fetchDashboardData} />;
-  }
 
   return (
     <div className="app-container main-content">
@@ -130,7 +151,7 @@ const AdminDashboard = () => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '2rem',
+          marginBottom: '1.5rem',
           flexWrap: 'wrap',
           gap: '1rem',
         }}
@@ -154,96 +175,174 @@ const AdminDashboard = () => {
               BMC Central Governance
             </span>
           </div>
-          <h1 style={{ fontSize: '1.85rem' }}>Grievance Redressal Oversight</h1>
+          <h1 style={{ fontSize: '1.85rem' }}>
+            {activeTab === 'grievances' ? 'Grievance Redressal Oversight' : 'Field Force & Officer Management'}
+          </h1>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button
-            type="button"
-            onClick={fetchDashboardData}
-            className="btn btn-secondary btn-sm"
-          >
-            <RotateCcw size={14} />
-            <span>Refresh Live Data</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem 1.25rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', alignItems: 'end' }}>
-          <label className="form-group" style={{ margin: 0 }}>
-            <span className="form-label">Analytics period</span>
-            <select className="form-select" value={analyticsFilters.range} onChange={(e) => handleAnalyticsFilterChange('range', e.target.value)}>
-              <option value="7d">Last 7 days</option>
-              <option value="30d">Last 30 days</option>
-              <option value="90d">Last 90 days</option>
-              <option value="custom">Custom range</option>
-            </select>
-          </label>
-          <label className="form-group" style={{ margin: 0 }}>
-            <span className="form-label">Department</span>
-            <select className="form-select" value={analyticsFilters.department} onChange={(e) => handleAnalyticsFilterChange('department', e.target.value)}>
-              <option>All</option>
-              <option>Public Works & Roads</option>
-              <option>Waste Management</option>
-              <option>Water Supply & Sanitation</option>
-              <option>Electricity & Power</option>
-              <option>Health & Environment</option>
-              <option>Traffic & Transport</option>
-              <option>General Administration</option>
-            </select>
-          </label>
-          {analyticsFilters.range === 'custom' && (
-            <>
-              <label className="form-group" style={{ margin: 0 }}>
-                <span className="form-label">Start date</span>
-                <input type="date" className="form-input" value={analyticsFilters.startDate} onChange={(e) => handleAnalyticsFilterChange('startDate', e.target.value)} />
-              </label>
-              <label className="form-group" style={{ margin: 0 }}>
-                <span className="form-label">End date</span>
-                <input type="date" className="form-input" value={analyticsFilters.endDate} onChange={(e) => handleAnalyticsFilterChange('endDate', e.target.value)} />
-              </label>
-            </>
+          {activeTab === 'grievances' && (
+            <button
+              type="button"
+              onClick={fetchDashboardData}
+              className="btn btn-secondary btn-sm"
+            >
+              <RotateCcw size={14} />
+              <span>Refresh Live Data</span>
+            </button>
           )}
         </div>
       </div>
 
-      {/* 1. Metric Stats Cards */}
-      <AdminStatsCards stats={stats} />
+      {/* Admin Module Tab Switcher */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.5rem',
+          borderBottom: '2px solid var(--border-subtle)',
+          marginBottom: '1.5rem',
+          paddingBottom: '0.25rem',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => handleTabSwitch('grievances')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.65rem 1.25rem',
+            border: 'none',
+            background: 'none',
+            fontSize: '0.95rem',
+            fontWeight: activeTab === 'grievances' ? 700 : 500,
+            color: activeTab === 'grievances' ? 'var(--primary)' : 'var(--text-muted)',
+            borderBottom: activeTab === 'grievances' ? '3px solid var(--primary)' : '3px solid transparent',
+            marginBottom: '-0.35rem',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <FileText size={18} />
+          <span>Grievance Oversight & Analytics</span>
+        </button>
 
-      {/* 2. Visual Analytics & Charts */}
-      <AdminCharts stats={stats} />
-
-      {/* Location-based overview */}
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
-          <div>
-            <h2 style={{ fontSize: '1.15rem' }}>Location-Based Overview</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Current filtered grievance locations</p>
-          </div>
-          <Link to="/admin/map" className="btn btn-secondary btn-sm">Open Grievance Map</Link>
-        </div>
-        <GrievanceMap grievances={grievances} height="300px" compact />
+        <button
+          type="button"
+          onClick={() => handleTabSwitch('officers')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.65rem 1.25rem',
+            border: 'none',
+            background: 'none',
+            fontSize: '0.95rem',
+            fontWeight: activeTab === 'officers' ? 700 : 500,
+            color: activeTab === 'officers' ? 'var(--primary)' : 'var(--text-muted)',
+            borderBottom: activeTab === 'officers' ? '3px solid var(--primary)' : '3px solid transparent',
+            marginBottom: '-0.35rem',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <Users size={18} />
+          <span>Officer Management</span>
+        </button>
       </div>
 
-      {/* 3. Grievance Management Records Table */}
-      <AdminGrievanceTable
-        grievances={grievances}
-        totalCount={totalCount}
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onResetFilters={handleResetFilters}
-        onOpenReview={(g) => setSelectedGrievance(g)}
-      />
+      {/* Tab 1: Grievances Oversight & Analytics */}
+      {activeTab === 'grievances' && (
+        <>
+          {loading && Object.keys(stats).length === 0 ? (
+            <LoadingState message="Loading Municipal Administration Command Center..." />
+          ) : error && Object.keys(stats).length === 0 ? (
+            <ErrorState message={error} onRetry={fetchDashboardData} />
+          ) : (
+            <>
+              {/* Analytics Range Filters */}
+              <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem 1.25rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', alignItems: 'end' }}>
+                  <label className="form-group" style={{ margin: 0 }}>
+                    <span className="form-label">Analytics period</span>
+                    <select className="form-select" value={analyticsFilters.range} onChange={(e) => handleAnalyticsFilterChange('range', e.target.value)}>
+                      <option value="7d">Last 7 days</option>
+                      <option value="30d">Last 30 days</option>
+                      <option value="90d">Last 90 days</option>
+                      <option value="custom">Custom range</option>
+                    </select>
+                  </label>
+                  <label className="form-group" style={{ margin: 0 }}>
+                    <span className="form-label">Department</span>
+                    <select className="form-select" value={analyticsFilters.department} onChange={(e) => handleAnalyticsFilterChange('department', e.target.value)}>
+                      <option>All</option>
+                      <option>Public Works & Roads</option>
+                      <option>Waste Management</option>
+                      <option>Water Supply & Sanitation</option>
+                      <option>Electricity & Power</option>
+                      <option>Health & Environment</option>
+                      <option>Traffic & Transport</option>
+                      <option>General Administration</option>
+                    </select>
+                  </label>
+                  {analyticsFilters.range === 'custom' && (
+                    <>
+                      <label className="form-group" style={{ margin: 0 }}>
+                        <span className="form-label">Start date</span>
+                        <input type="date" className="form-input" value={analyticsFilters.startDate} onChange={(e) => handleAnalyticsFilterChange('startDate', e.target.value)} />
+                      </label>
+                      <label className="form-group" style={{ margin: 0 }}>
+                        <span className="form-label">End date</span>
+                        <input type="date" className="form-input" value={analyticsFilters.endDate} onChange={(e) => handleAnalyticsFilterChange('endDate', e.target.value)} />
+                      </label>
+                    </>
+                  )}
+                </div>
+              </div>
 
-      {/* 4. Interactive Review & Assignment Modal */}
-      {selectedGrievance && (
-        <AdminReviewModal
-          grievance={selectedGrievance}
-          onClose={() => setSelectedGrievance(null)}
-          onUpdated={handleGrievanceUpdated}
-        />
+              {/* 1. Metric Stats Cards */}
+              <AdminStatsCards stats={stats} />
+
+              {/* 2. Visual Analytics & Charts */}
+              <AdminCharts stats={stats} />
+
+              {/* Location-based overview */}
+              <div className="card" style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
+                  <div>
+                    <h2 style={{ fontSize: '1.15rem' }}>Location-Based Overview</h2>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Current filtered grievance locations</p>
+                  </div>
+                  <Link to="/admin/map" className="btn btn-secondary btn-sm">Open Grievance Map</Link>
+                </div>
+                <GrievanceMap grievances={grievances} height="300px" compact />
+              </div>
+
+              {/* 3. Grievance Management Records Table */}
+              <AdminGrievanceTable
+                grievances={grievances}
+                totalCount={totalCount}
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                onResetFilters={handleResetFilters}
+                onOpenReview={(g) => setSelectedGrievance(g)}
+              />
+
+              {/* 4. Interactive Review & Assignment Modal */}
+              {selectedGrievance && (
+                <AdminReviewModal
+                  grievance={selectedGrievance}
+                  onClose={() => setSelectedGrievance(null)}
+                  onUpdated={handleGrievanceUpdated}
+                />
+              )}
+            </>
+          )}
+        </>
       )}
+
+      {/* Tab 2: Field Officer Management */}
+      {activeTab === 'officers' && <OfficerManagement />}
     </div>
   );
 };

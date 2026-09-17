@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const {
-  register,
+  registerCitizen,
+  registerOfficer,
+  registerAdmin,
   login,
   getMe,
   updateProfile,
@@ -10,7 +12,10 @@ const {
 const { protect, authorize } = require('../middleware/authMiddleware');
 const { authRateLimit } = require('../middleware/securityMiddleware');
 
-router.post('/register', authRateLimit, register);
+router.post('/register', authRateLimit, registerCitizen);
+router.post('/register/citizen', authRateLimit, registerCitizen);
+router.post('/register/officer', authRateLimit, registerOfficer);
+router.post('/register/admin', authRateLimit, registerAdmin);
 router.post('/login', authRateLimit, login);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);

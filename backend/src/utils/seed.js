@@ -1,6 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const { Grievance } = require('../models/Grievance');
 
 const seedUsers = [
   // 1. Citizen Demo
@@ -32,13 +33,16 @@ const seedUsers = [
   },
   // 2. Officers in key departments
   {
-    name: 'Rajesh Verma (PWD Officer)',
+    name: 'Rajesh Verma',
     email: 'officer.pwd@civicai.gov',
     password: 'password123',
     role: 'officer',
     department: 'Public Works & Roads',
+    officerType: 'Road Maintenance Officer',
     designation: 'Senior Executive Engineer',
+    employeeId: 'PWD-101',
     phone: '+91 94370 12345',
+    status: 'active',
     address: {
       city: 'Bhubaneswar',
       ward: 'Zonal Office Central',
@@ -46,13 +50,16 @@ const seedUsers = [
     },
   },
   {
-    name: 'Sunita Mohanty (Water & Sanitation)',
+    name: 'Sunita Mohanty',
     email: 'officer.water@civicai.gov',
     password: 'password123',
     role: 'officer',
     department: 'Water Supply & Sanitation',
+    officerType: 'Water Supply Officer',
     designation: 'Assistant Engineer (Water Works)',
+    employeeId: 'WTR-202',
     phone: '+91 94371 67890',
+    status: 'active',
     address: {
       city: 'Bhubaneswar',
       ward: 'Zonal Office North',
@@ -60,13 +67,16 @@ const seedUsers = [
     },
   },
   {
-    name: 'Amitabh Sen (Electricity & Power)',
-    email: 'officer.power@civicai.gov',
+    name: 'Amitabh Sen',
+    email: 'officer.electricity@civicai.gov',
     password: 'password123',
     role: 'officer',
     department: 'Electricity & Power',
+    officerType: 'Electrical Officer',
     designation: 'Divisional Electrical Engineer',
+    employeeId: 'ELE-303',
     phone: '+91 94372 11223',
+    status: 'active',
     address: {
       city: 'Bhubaneswar',
       ward: 'Zonal Office South',
@@ -74,13 +84,16 @@ const seedUsers = [
     },
   },
   {
-    name: 'Kavita Das (Waste Management)',
+    name: 'Kavita Das',
     email: 'officer.waste@civicai.gov',
     password: 'password123',
     role: 'officer',
     department: 'Waste Management',
+    officerType: 'Sanitation Officer',
     designation: 'Sanitary Inspector Lead',
+    employeeId: 'WST-404',
     phone: '+91 94373 99887',
+    status: 'active',
     address: {
       city: 'Bhubaneswar',
       ward: 'BMC Central Depot',
@@ -89,13 +102,15 @@ const seedUsers = [
   },
   // 3. System Administrator
   {
-    name: 'Dr. Vikramaditya (Admin)',
+    name: 'Dr. Vikramaditya',
     email: 'admin@civicai.gov',
     password: 'password123',
     role: 'admin',
     department: 'General Administration',
     designation: 'Chief Grievance Redressal Officer',
+    employeeId: 'ADM-001',
     phone: '+91 94379 00001',
+    status: 'active',
     address: {
       city: 'Bhubaneswar',
       ward: 'Municipal Commissionerate Headquarters',
@@ -103,8 +118,6 @@ const seedUsers = [
     },
   },
 ];
-
-const { Grievance } = require('../models/Grievance');
 
 const seedDatabase = async () => {
   try {
@@ -134,9 +147,16 @@ const seedDatabase = async () => {
     const waterOfficer = createdUsers.find(
       (u) => u.email === 'officer.water@civicai.gov'
     );
+    const electricityOfficer = createdUsers.find(
+      (u) => u.email === 'officer.electricity@civicai.gov'
+    );
+    const wasteOfficer = createdUsers.find(
+      (u) => u.email === 'officer.waste@civicai.gov'
+    );
 
-    // Seed initial realistic grievances for citizen
+    // Seed initial realistic grievances assigned to each field officer
     const sampleGrievances = [
+      // 1. PWD / Roads Grievance -> Assigned to Rajesh Verma
       {
         trackingId: 'CIVIC-2026-1042',
         title: 'Severe Potholes and Damaged Asphalt on Master Canteen Main Road',
@@ -164,8 +184,10 @@ const seedDatabase = async () => {
           category: 'Roads',
           department: 'Public Works & Roads',
           priority: 'High',
-          summary: 'Multiple deep asphalt potholes near Master Canteen causing commuter hazard and severe skidding.',
-          suggestedAction: 'Deploy asphalt road patching unit and roller equipment for urgent leveling.',
+          summary:
+            'Multiple deep asphalt potholes near Master Canteen causing commuter hazard and severe skidding.',
+          suggestedAction:
+            'Deploy asphalt road patching unit and roller equipment for urgent leveling.',
           status: 'completed',
           confidenceScore: 0.94,
           analyzedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
@@ -191,6 +213,7 @@ const seedDatabase = async () => {
           },
         ],
       },
+      // 2. Water Supply & Sanitation Grievance -> Assigned to Sunita Mohanty
       {
         trackingId: 'CIVIC-2026-1088',
         title: 'Drinking Water Pipeline Burst Causing Flooding in Lane 4',
@@ -218,8 +241,10 @@ const seedDatabase = async () => {
           category: 'Water Supply',
           department: 'Water Supply & Sanitation',
           priority: 'Critical',
-          summary: 'Critical underground potable water pipeline rupture causing severe flooding and household shortage.',
-          suggestedAction: 'Isolate main water distribution valve and dispatch emergency excavation and pipeline replacement team.',
+          summary:
+            'Critical underground potable water pipeline rupture causing severe flooding and household shortage.',
+          suggestedAction:
+            'Isolate main water distribution valve and dispatch emergency excavation and pipeline replacement team.',
           status: 'completed',
           confidenceScore: 0.98,
           analyzedAt: new Date(Date.now() - 18 * 60 * 60 * 1000),
@@ -239,6 +264,64 @@ const seedDatabase = async () => {
           },
         ],
       },
+      // 3. Electricity & Power Grievance -> Assigned to Amitabh Sen
+      {
+        trackingId: 'CIVIC-2026-1055',
+        title: 'Sparking Distribution Transformer and Broken Streetlights in Ward 08',
+        description:
+          'Local distribution transformer on Nayapalli main road is sparking intermittently during evening hours. Streetlights on the 500-meter stretch are completely dark, causing safety hazards for pedestrians.',
+        category: 'Electricity',
+        department: 'Electricity & Power',
+        priority: 'High',
+        status: 'In Progress',
+        location: {
+          address: 'Main Road Junction, Sector 2, Nayapalli',
+          latitude: 20.3012,
+          longitude: 85.8164,
+          landmark: 'Near Transformer Box #12',
+          city: 'Bhubaneswar',
+          ward: 'Ward 08 (Nayapalli)',
+          pincode: '751012',
+        },
+        images: [
+          'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=800&q=80',
+        ],
+        citizenId: citizenAarav._id,
+        assignedOfficer: electricityOfficer._id,
+        aiAnalysis: {
+          category: 'Electricity',
+          department: 'Electricity & Power',
+          priority: 'High',
+          summary:
+            'Sparking step-down transformer and dark streetlights posing electrical hazard and public safety risk.',
+          suggestedAction:
+            'Dispatch high-voltage line technician squad to isolate sparking unit and replace burned fuses and streetlight lamps.',
+          status: 'completed',
+          confidenceScore: 0.95,
+          analyzedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        },
+        statusHistory: [
+          {
+            status: 'Submitted',
+            changedBy: citizenAarav._id,
+            comment: 'Citizen submitted electrical hazard complaint.',
+            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          },
+          {
+            status: 'Assigned',
+            changedBy: electricityOfficer._id,
+            comment: 'Assigned to South Zone Power Maintenance Crew.',
+            timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000),
+          },
+          {
+            status: 'In Progress',
+            changedBy: electricityOfficer._id,
+            comment: 'Technician team dispatched with insulated lift equipment.',
+            timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
+          },
+        ],
+      },
+      // 4. Waste Management Grievance -> Assigned to Kavita Das
       {
         trackingId: 'CIVIC-2026-1120',
         title: 'Overflowing Garbage Bins & Illegal Dumping at Market Corner',
@@ -247,7 +330,7 @@ const seedDatabase = async () => {
         category: 'Waste Management',
         department: 'Waste Management',
         priority: 'Medium',
-        status: 'Submitted',
+        status: 'Assigned',
         location: {
           address: 'Daily Market Complex, Sector 9, Saheed Nagar',
           latitude: 20.2882,
@@ -257,23 +340,34 @@ const seedDatabase = async () => {
           ward: 'Ward 14 (Saheed Nagar)',
           pincode: '751007',
         },
-        images: [],
+        images: [
+          'https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&w=800&q=80',
+        ],
         citizenId: citizenAarav._id,
+        assignedOfficer: wasteOfficer._id,
         aiAnalysis: {
           category: 'Waste Management',
           department: 'Waste Management',
           priority: 'Medium',
-          summary: 'Uncollected municipal garbage bins creating odor and sanitation hazard near market entrance.',
-          suggestedAction: 'Dispatch hydraulic compactor vehicle and sanitation crew for bin emptying and lime bleaching.',
+          summary:
+            'Uncollected municipal garbage bins creating odor and sanitation hazard near market entrance.',
+          suggestedAction:
+            'Dispatch hydraulic compactor vehicle and sanitation crew for bin emptying and lime bleaching.',
           status: 'completed',
           confidenceScore: 0.91,
-          analyzedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+          analyzedAt: new Date(Date.now() - 10 * 60 * 60 * 1000),
         },
         statusHistory: [
           {
             status: 'Submitted',
             changedBy: citizenAarav._id,
             comment: 'Grievance submitted by citizen.',
+            timestamp: new Date(Date.now() - 10 * 60 * 60 * 1000),
+          },
+          {
+            status: 'Assigned',
+            changedBy: wasteOfficer._id,
+            comment: 'Sanitation squad assigned for morning collection and site cleanup.',
             timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
           },
         ],
@@ -290,10 +384,10 @@ const seedDatabase = async () => {
     console.log('----------------------------------------------------');
     console.log('Demo Credentials (Password for all: password123):');
     console.log('1. Citizen: citizen@civicai.gov');
-    console.log('2. PWD Officer: officer.pwd@civicai.gov');
-    console.log('3. Water Officer: officer.water@civicai.gov');
-    console.log('4. Power Officer: officer.power@civicai.gov');
-    console.log('5. Waste Officer: officer.waste@civicai.gov');
+    console.log('2. Field Officer (PWD): officer.pwd@civicai.gov');
+    console.log('3. Field Officer (Water & Sanitation): officer.water@civicai.gov');
+    console.log('4. Field Officer (Electricity & Power): officer.electricity@civicai.gov');
+    console.log('5. Field Officer (Waste Management): officer.waste@civicai.gov');
     console.log('6. Administrator: admin@civicai.gov');
     console.log('----------------------------------------------------');
 

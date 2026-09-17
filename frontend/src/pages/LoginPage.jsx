@@ -6,10 +6,11 @@ import {
   Lock,
   ArrowRight,
   AlertCircle,
-  Users,
-  Building,
-  Shield,
   Loader2,
+  Info,
+  User,
+  Wrench,
+  ShieldAlert,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -19,7 +20,7 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { login, demoLogin } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -43,29 +44,8 @@ const LoginPage = () => {
       }
     } catch (err) {
       setError(
-        err.response?.data?.message || 'Login failed. Please check credentials.'
+        err.response?.data?.message || 'Invalid email or password.'
       );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDemo = async (roleType) => {
-    setError('');
-    setIsSubmitting(true);
-    try {
-      const res = await demoLogin(roleType);
-      if (res.success) {
-        if (roleType === 'admin' || res.user?.role === 'admin') {
-          navigate('/admin');
-        } else if (roleType === 'officer' || res.user?.role === 'officer') {
-          navigate('/officer');
-        } else {
-          navigate('/dashboard');
-        }
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Demo login failed');
     } finally {
       setIsSubmitting(false);
     }
@@ -74,8 +54,8 @@ const LoginPage = () => {
   return (
     <div
       style={{
-        maxWidth: '480px',
-        margin: '2rem auto',
+        maxWidth: '620px',
+        margin: '2.5rem auto',
         padding: '0 1rem',
       }}
     >
@@ -98,7 +78,7 @@ const LoginPage = () => {
           >
             <ShieldCheck size={28} />
           </div>
-          <h2 style={{ fontSize: '1.6rem', marginBottom: '0.4rem' }}>
+          <h2 style={{ fontSize: '1.6rem', marginBottom: '0.4rem', fontWeight: 800 }}>
             Welcome to CivicAI
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -127,7 +107,7 @@ const LoginPage = () => {
           </div>
         )}
 
-        {/* Login Form */}
+        {/* Universal Login Form */}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label" htmlFor="email">
@@ -139,7 +119,7 @@ const LoginPage = () => {
                 type="email"
                 required
                 className="form-input"
-                placeholder="citizen@civicai.gov"
+                placeholder="Enter email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 style={{ paddingLeft: '2.5rem' }}
@@ -167,7 +147,7 @@ const LoginPage = () => {
                 type="password"
                 required
                 className="form-input"
-                placeholder="••••••••"
+                placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 style={{ paddingLeft: '2.5rem' }}
@@ -188,7 +168,7 @@ const LoginPage = () => {
           <button
             type="submit"
             className="btn btn-primary"
-            style={{ width: '100%', marginTop: '0.5rem' }}
+            style={{ width: '100%', marginTop: '0.75rem' }}
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -205,105 +185,178 @@ const LoginPage = () => {
           </button>
         </form>
 
-        {/* 1-Click Demo Evaluation Buttons */}
+        {/* Minimal Hackathon Evaluation Note */}
+        <div
+          style={{
+            marginTop: '1.75rem',
+            backgroundColor: '#f8fafc',
+            borderRadius: 'var(--radius-md)',
+            padding: '0.85rem 1rem',
+            textAlign: 'center',
+            border: '1px solid var(--border-subtle)',
+          }}
+        >
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.2rem' }}>
+            <Info size={13} color="#4f46e5" />
+            <span
+              style={{
+                fontSize: '0.725rem',
+                color: '#4f46e5',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}
+            >
+              FOR HACKATHON EVALUATION
+            </span>
+          </div>
+          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Quick Demo Access: Demo credentials are provided in the documentation.
+          </p>
+        </div>
+
+        {/* Registration Options Section */}
         <div
           style={{
             marginTop: '2rem',
             paddingTop: '1.5rem',
             borderTop: '1px solid var(--border-subtle)',
+            textAlign: 'center',
           }}
         >
           <p
             style={{
-              fontSize: '0.8rem',
-              color: 'var(--text-muted)',
-              textAlign: 'center',
-              marginBottom: '0.85rem',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
+              fontSize: '0.9rem',
+              color: 'var(--text-main)',
+              marginBottom: '1rem',
+              fontWeight: 700,
             }}
           >
-            Instant Evaluation Demo Logins
+            Don't have an account?
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => handleDemo('citizen')}
-              disabled={isSubmitting}
-              className="btn btn-secondary btn-sm"
-              style={{ justifyContent: 'flex-start', padding: '0.6rem 0.85rem' }}
-            >
-              <Users size={16} color="var(--primary)" />
-              <div style={{ textAlign: 'left', lineHeight: '1.2' }}>
-                <div style={{ fontWeight: 600 }}>Login as Citizen (Aarav Sharma)</div>
-                <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
-                  citizen@civicai.gov
-                </div>
-              </div>
-            </button>
 
-            <button
-              type="button"
-              onClick={() => handleDemo('officer')}
-              disabled={isSubmitting}
-              className="btn btn-secondary btn-sm"
-              style={{
-                justifyContent: 'flex-start',
-                padding: '0.6rem 0.85rem',
-                borderColor: '#99f6e4',
-                backgroundColor: '#f0fdfa',
-              }}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: '0.85rem',
+              alignItems: 'stretch',
+            }}
+          >
+            {/* 1. Citizen Registration */}
+            <Link
+              to="/register/citizen"
+              className="register-role-card citizen"
+              aria-label="Register as Citizen"
             >
-              <Building size={16} color="#0d9488" />
-              <div style={{ textAlign: 'left', lineHeight: '1.2' }}>
-                <div style={{ fontWeight: 600, color: '#0f766e' }}>
-                  Login as Field Officer (Rajesh Verma - PWD)
-                </div>
-                <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
-                  officer.pwd@civicai.gov
-                </div>
+              <div
+                className="role-icon-box"
+                style={{
+                  backgroundColor: '#eff6ff',
+                  color: '#2563eb',
+                  border: '1px solid #dbeafe',
+                }}
+              >
+                <User size={20} />
               </div>
-            </button>
+              <span
+                style={{
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  color: 'var(--text-main)',
+                  lineHeight: '1.2',
+                }}
+              >
+                Register as Citizen
+              </span>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  lineHeight: '1.35',
+                  marginTop: '0.35rem',
+                }}
+              >
+                Create a public citizen account
+              </span>
+            </Link>
 
-            <button
-              type="button"
-              onClick={() => handleDemo('admin')}
-              disabled={isSubmitting}
-              className="btn btn-secondary btn-sm"
-              style={{
-                justifyContent: 'flex-start',
-                padding: '0.6rem 0.85rem',
-                borderColor: '#c4b5fd',
-                backgroundColor: '#f5f3ff',
-              }}
+            {/* 2. Field Officer Registration */}
+            <Link
+              to="/register/officer"
+              className="register-role-card officer"
+              aria-label="Register as Field Officer"
             >
-              <ShieldCheck size={16} color="#7c3aed" />
-              <div style={{ textAlign: 'left', lineHeight: '1.2' }}>
-                <div style={{ fontWeight: 600, color: '#6d28d9' }}>
-                  Login as Administrator (Dr. Vikramaditya)
-                </div>
-                <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
-                  admin@civicai.gov
-                </div>
+              <div
+                className="role-icon-box"
+                style={{
+                  backgroundColor: '#f0fdfa',
+                  color: '#0d9488',
+                  border: '1px solid #ccfbf1',
+                }}
+              >
+                <Wrench size={20} />
               </div>
-            </button>
+              <span
+                style={{
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  color: 'var(--text-main)',
+                  lineHeight: '1.2',
+                }}
+              >
+                Register as Field Officer
+              </span>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  lineHeight: '1.35',
+                  marginTop: '0.35rem',
+                }}
+              >
+                Register for official field operations
+              </span>
+            </Link>
+
+            {/* 3. Administrator Registration */}
+            <Link
+              to="/register/admin"
+              className="register-role-card admin"
+              aria-label="Register as Administrator"
+            >
+              <div
+                className="role-icon-box"
+                style={{
+                  backgroundColor: '#eef2ff',
+                  color: '#4f46e5',
+                  border: '1px solid #e0e7ff',
+                }}
+              >
+                <ShieldAlert size={20} />
+              </div>
+              <span
+                style={{
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  color: 'var(--text-main)',
+                  lineHeight: '1.2',
+                }}
+              >
+                Register as Administrator
+              </span>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  lineHeight: '1.35',
+                  marginTop: '0.35rem',
+                }}
+              >
+                Secure administrator registration
+              </span>
+            </Link>
           </div>
-        </div>
-
-        {/* Footer Link */}
-        <div
-          style={{
-            textAlign: 'center',
-            marginTop: '1.5rem',
-            fontSize: '0.9rem',
-            color: 'var(--text-muted)',
-          }}
-        >
-          Don't have an account?{' '}
-          <Link to="/register" style={{ fontWeight: 600 }}>
-            Register Citizen Account
-          </Link>
         </div>
       </div>
     </div>

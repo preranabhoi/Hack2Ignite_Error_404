@@ -209,30 +209,175 @@ const getAllGrievances = async (req, res, next) => {
   }
 };
 
-// @desc    Get officer directory with active workload counts
+// @desc    Create a new Field Officer
+// @route   POST /api/admin/officers
+// @access  Private (Admin)
+const createOfficer = async (req, res, next) => {
+  try {
+    const {
+      name,
+      email,
+      password,
+      phone,
+      employeeId,
+      department,
+      officerType,
+      designation,
+      ward,
+      city,
+      status = 'active',
+      address,
+    } = req.body;
+
+    if (!name || typeof name !== 'string' || name.trim().length < 2 || name.length > 100) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid full name (2-100 characters).' });
+    }
+
+    if (!email || typeof email !== 'string' || email.length > 254) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid email address.' });
+    }
+
+    if (!password || typeof password !== 'string' || password.length < 8 || password.length > 128) {
+      return res.status(400).json({ success: false, message: 'Please provide a password (minimum 8 characters).' });
+    }
+
+    if (!department || typeof department !== 'string' || department.trim() === '') {
+      return res.status(400).json({ success: false, message: 'Please select a department.' });
+    }
+
+    if (!employeeId || typeof employeeId !== 'string' || employeeId.trim() === '') {
+      return res.status(400).json({ success: false, message: 'Please provide an employee ID.' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmpId = employeeId.trim().toUpperCase();
+
+    // Check unique email
+    const existingEmail = await User.findOne({ email: normalizedEmail });
+    if (existingEmail) {
+      return res.status(400).json({ success: false, message: 'An account with this email address already exists.' });
+    }
+
+    // Check unique employeeId
+    const existingEmpId = await User.findOne({ employeeId: normalizedEmpId });
+    if (existingEmpId) {
+      return res.status(400).json({ success: false, message: 'An officer with this Employee ID already exists.' });
+    }
+
+    const officerAddress = {
+      city: typeof city === 'string' && city.trim() ? city.trim() : (address?.city || 'Bhubaneswar'),
+      ward: typeof ward === 'string' && ward.trim() ? ward.trim() : (address?.ward || ''),
+      pincode: address?.pincode || '',
+    };
+
+    const isActive = status !== 'inactive';
+
+    const officer = await User.create({
+      name: name.trim(),
+      email: normalizedEmail,
+      password,
+      role: 'officer', // Strictly forced to officer; never allows admin creation
+      department: department.trim(),
+      officerType: officerType && typeof officerType === 'string' && officerType.trim() ? officerType.trim() : 'Field Officer',
+      designation: designation && typeof designation === 'string' && designation.trim() ? designation.trim() : 'Field Officer',
+      employeeId: normalizedEmpId,
+      phone: phone && typeof phone === 'string' ? phone.trim() : '',
+      address: officerAddress,
+      isActive,
+      status: isActive ? 'active' : 'inactive',
+    });
+
+    await recordAudit({
+      action: 'officer_create',
+      actorId: req.user._id,
+      details: { officerId: officer._id, name: officer.name, department: officer.department, employeeId: officer.employeeId },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Field Officer account created successfully.',
+      officer: {
+        id: officer._id,
+        _id: officer._id,
+        name: officer.name,
+        email: officer.email,
+        role: officer.role,
+        department: officer.department,
+        officerType: officer.officerType,
+        designation: officer.designation,
+        employeeId: officer.employeeId,
+        phone: officer.phone,
+        address: officer.address,
+        status: officer.status,
+        isActive: officer.isActive,
+        createdAt: officer.createdAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get officer directory with search, filters, and grievance workload counts
 // @route   GET /api/admin/officers
 // @access  Private (Admin)
 const getOfficersDirectory = async (req, res, next) => {
   try {
-    const { department } = req.query;
-    const filter = { role: 'officer', isActive: true };
+    const { department, officerType, status, search } = req.query;
+    const filter = { role: 'officer' };
 
     if (department && department !== 'All') {
       filter.department = department;
     }
 
-    const officers = await User.find(filter).select('name email role department designation employeeId availabilityStatus');
+    if (officerType && officerType !== 'All') {
+      filter.officerType = officerType;
+    }
 
-    // Attach current active workload count to each officer
+    if (status && status !== 'All') {
+      if (status.toLowerCase() === 'active') {
+        filter.$or = [{ status: 'active' }, { isActive: true }];
+      } else if (status.toLowerCase() === 'inactive') {
+        filter.$or = [{ status: 'inactive' }, { isActive: false }];
+      }
+    }
+
+    if (search && search.trim() !== '') {
+      const searchRegex = new RegExp(escapeRegex(search.trim().slice(0, 100)), 'i');
+      filter.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { employeeId: searchRegex },
+        { designation: searchRegex },
+        { officerType: searchRegex },
+        { 'address.ward': searchRegex },
+        { 'address.city': searchRegex },
+      ];
+    }
+
+    const officers = await User.find(filter)
+      .select('name email role department designation officerType employeeId phone address status isActive availabilityStatus createdAt')
+      .sort({ createdAt: -1 });
+
+    // Attach workload counts to each officer
     const officersWithWorkload = await Promise.all(
       officers.map(async (officer) => {
+        const totalAssigned = await Grievance.countDocuments({ assignedOfficer: officer._id });
         const activeCount = await Grievance.countDocuments({
           assignedOfficer: officer._id,
-          status: { $in: ['Assigned', 'In Progress'] },
+          status: { $in: ['Assigned', 'In Progress', 'Under Review'] },
+        });
+        const resolvedCount = await Grievance.countDocuments({
+          assignedOfficer: officer._id,
+          status: 'Resolved',
         });
 
         const officerObj = officer.toObject();
+        officerObj.id = officer._id;
+        officerObj.totalAssigned = totalAssigned;
         officerObj.activeGrievancesCount = activeCount;
+        officerObj.resolvedCount = resolvedCount;
+        officerObj.status = officer.isActive !== false ? 'active' : 'inactive';
         return officerObj;
       })
     );
@@ -241,6 +386,257 @@ const getOfficersDirectory = async (req, res, next) => {
       success: true,
       count: officersWithWorkload.length,
       officers: officersWithWorkload,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get single officer details with assigned grievance stats & recent list
+// @route   GET /api/admin/officers/:id
+// @access  Private (Admin)
+const getOfficerById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const officer = await User.findOne({ _id: id, role: 'officer' })
+      .select('name email role department designation officerType employeeId phone address status isActive availabilityStatus createdAt');
+
+    if (!officer) {
+      return res.status(404).json({ success: false, message: 'Field Officer not found.' });
+    }
+
+    const totalAssigned = await Grievance.countDocuments({ assignedOfficer: officer._id });
+    const inProgress = await Grievance.countDocuments({ assignedOfficer: officer._id, status: 'In Progress' });
+    const pending = await Grievance.countDocuments({ assignedOfficer: officer._id, status: 'Assigned' });
+    const underReview = await Grievance.countDocuments({ assignedOfficer: officer._id, status: 'Under Review' });
+    const resolved = await Grievance.countDocuments({ assignedOfficer: officer._id, status: 'Resolved' });
+
+    const recentGrievances = await Grievance.find({ assignedOfficer: officer._id })
+      .select('trackingId title category priority status createdAt location.ward location.address')
+      .populate('citizenId', 'name email phone')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    res.json({
+      success: true,
+      officer: {
+        ...officer.toObject(),
+        id: officer._id,
+        status: officer.isActive !== false ? 'active' : 'inactive',
+      },
+      stats: {
+        totalAssigned,
+        inProgress,
+        pending,
+        underReview,
+        resolved,
+      },
+      recentGrievances,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update officer details
+// @route   PATCH /api/admin/officers/:id
+// @access  Private (Admin)
+const updateOfficer = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      email,
+      phone,
+      employeeId,
+      department,
+      officerType,
+      designation,
+      ward,
+      city,
+      status,
+      isActive,
+      password,
+    } = req.body;
+
+    const officer = await User.findOne({ _id: id, role: 'officer' });
+    if (!officer) {
+      return res.status(404).json({ success: false, message: 'Field Officer not found.' });
+    }
+
+    if (name && typeof name === 'string' && name.trim().length >= 2) {
+      officer.name = name.trim();
+    }
+
+    if (email && typeof email === 'string') {
+      const normalizedEmail = email.trim().toLowerCase();
+      if (normalizedEmail !== officer.email) {
+        const existing = await User.findOne({ email: normalizedEmail });
+        if (existing) {
+          return res.status(400).json({ success: false, message: 'An account with this email address already exists.' });
+        }
+        officer.email = normalizedEmail;
+      }
+    }
+
+    if (employeeId && typeof employeeId === 'string') {
+      const normalizedEmpId = employeeId.trim().toUpperCase();
+      if (normalizedEmpId !== officer.employeeId) {
+        const existingEmp = await User.findOne({ employeeId: normalizedEmpId });
+        if (existingEmp) {
+          return res.status(400).json({ success: false, message: 'An officer with this Employee ID already exists.' });
+        }
+        officer.employeeId = normalizedEmpId;
+      }
+    }
+
+    if (department && typeof department === 'string') {
+      officer.department = department.trim();
+    }
+
+    if (officerType && typeof officerType === 'string') {
+      officer.officerType = officerType.trim();
+    }
+
+    if (designation && typeof designation === 'string') {
+      officer.designation = designation.trim();
+    }
+
+    if (phone !== undefined) {
+      officer.phone = typeof phone === 'string' ? phone.trim() : '';
+    }
+
+    if (ward !== undefined || city !== undefined) {
+      officer.address = {
+        ...officer.address,
+        ward: ward !== undefined ? String(ward).trim() : officer.address.ward,
+        city: city !== undefined ? String(city).trim() : officer.address.city,
+      };
+    }
+
+    if (status !== undefined) {
+      officer.status = status === 'active' ? 'active' : 'inactive';
+      officer.isActive = officer.status === 'active';
+    } else if (isActive !== undefined) {
+      officer.isActive = Boolean(isActive);
+      officer.status = officer.isActive ? 'active' : 'inactive';
+    }
+
+    if (password && typeof password === 'string' && password.length >= 8) {
+      officer.password = password; // pre-save hook will hash it
+    }
+
+    // Role MUST remain officer
+    officer.role = 'officer';
+
+    const updatedOfficer = await officer.save();
+
+    await recordAudit({
+      action: 'officer_update',
+      actorId: req.user._id,
+      details: { officerId: updatedOfficer._id, name: updatedOfficer.name, department: updatedOfficer.department },
+    });
+
+    res.json({
+      success: true,
+      message: 'Officer profile updated successfully.',
+      officer: {
+        id: updatedOfficer._id,
+        _id: updatedOfficer._id,
+        name: updatedOfficer.name,
+        email: updatedOfficer.email,
+        role: updatedOfficer.role,
+        department: updatedOfficer.department,
+        officerType: updatedOfficer.officerType,
+        designation: updatedOfficer.designation,
+        employeeId: updatedOfficer.employeeId,
+        phone: updatedOfficer.phone,
+        address: updatedOfficer.address,
+        status: updatedOfficer.status,
+        isActive: updatedOfficer.isActive,
+        updatedAt: updatedOfficer.updatedAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Toggle or set officer status (Active/Inactive)
+// @route   PATCH /api/admin/officers/:id/status
+// @access  Private (Admin)
+const updateOfficerStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, isActive } = req.body;
+
+    const officer = await User.findOne({ _id: id, role: 'officer' });
+    if (!officer) {
+      return res.status(404).json({ success: false, message: 'Field Officer not found.' });
+    }
+
+    let newStatus = 'active';
+    if (status) {
+      newStatus = status === 'active' ? 'active' : 'inactive';
+    } else if (typeof isActive === 'boolean') {
+      newStatus = isActive ? 'active' : 'inactive';
+    } else {
+      newStatus = officer.isActive ? 'inactive' : 'active';
+    }
+
+    officer.status = newStatus;
+    officer.isActive = newStatus === 'active';
+    await officer.save();
+
+    await recordAudit({
+      action: 'officer_status_change',
+      actorId: req.user._id,
+      details: { officerId: officer._id, newStatus },
+    });
+
+    res.json({
+      success: true,
+      message: `Officer account has been ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully.`,
+      officer: {
+        id: officer._id,
+        _id: officer._id,
+        name: officer.name,
+        email: officer.email,
+        role: officer.role,
+        department: officer.department,
+        status: officer.status,
+        isActive: officer.isActive,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Soft-delete / deactivate an officer
+// @route   DELETE /api/admin/officers/:id
+// @access  Private (Admin)
+const deleteOfficer = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const officer = await User.findOne({ _id: id, role: 'officer' });
+    if (!officer) {
+      return res.status(404).json({ success: false, message: 'Field Officer not found.' });
+    }
+
+    officer.status = 'inactive';
+    officer.isActive = false;
+    await officer.save();
+
+    await recordAudit({
+      action: 'officer_deactivate',
+      actorId: req.user._id,
+      details: { officerId: officer._id, name: officer.name },
+    });
+
+    res.json({
+      success: true,
+      message: `Officer ${officer.name} deactivated successfully. Historical grievance assignments remain intact.`,
     });
   } catch (error) {
     next(error);
@@ -510,6 +906,11 @@ module.exports = {
   getAdminStats,
   getAllGrievances,
   getOfficersDirectory,
+  createOfficer,
+  getOfficerById,
+  updateOfficer,
+  updateOfficerStatus,
+  deleteOfficer,
   assignOfficer,
   updateGrievanceStatus,
   overrideGrievance,

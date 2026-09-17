@@ -9,6 +9,8 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import RegisterOfficerPage from './pages/RegisterOfficerPage';
+import RegisterAdminPage from './pages/RegisterAdminPage';
 import CitizenDashboard from './pages/CitizenDashboard';
 import CreateGrievancePage from './pages/CreateGrievancePage';
 import MyGrievancesPage from './pages/MyGrievancesPage';
@@ -32,8 +34,12 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/register/citizen" element={<RegisterPage />} />
+              <Route path="/register/officer" element={<RegisterOfficerPage />} />
+              <Route path="/register/admin" element={<RegisterAdminPage />} />
 
               {/* Protected Citizen Routes */}
+              <Route path="/citizen" element={<Navigate to="/dashboard" replace />} />
               <Route
                 path="/dashboard"
                 element={

@@ -125,17 +125,33 @@ const OfficerDashboard = () => {
         }}
       >
         <div>
-          <span
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              padding: '0.25rem 0.75rem',
-              borderRadius: 'var(--radius-full)',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-            }}
-          >
-            FIELD OFFICER WORKSPACE • {user?.department || 'Municipal Services'}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <span
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                padding: '0.25rem 0.75rem',
+                borderRadius: 'var(--radius-full)',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+              }}
+            >
+              FIELD OFFICER WORKSPACE • {user?.department || 'Municipal Services'}
+            </span>
+            {user?.employeeId && (
+              <span
+                style={{
+                  backgroundColor: 'rgba(0,0,0,0.2)',
+                  padding: '0.25rem 0.65rem',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  fontFamily: 'monospace',
+                }}
+              >
+                ID: {user.employeeId}
+              </span>
+            )}
+          </div>
           <h1
             style={{
               color: 'white',
@@ -144,10 +160,14 @@ const OfficerDashboard = () => {
               marginBottom: '0.3rem',
             }}
           >
-            Welcome, {user?.name}!
+            Welcome, {user?.name || 'Officer'}!
           </h1>
-          <p style={{ color: '#ccfbf1', fontSize: '0.95rem' }}>
-            {user?.designation || 'Senior Executive Engineer'} • Redressal Duty
+          <p style={{ color: '#ccfbf1', fontSize: '0.95rem', margin: 0 }}>
+            <strong style={{ color: 'white' }}>{user?.officerType || 'Field Officer'}</strong>
+            {user?.designation && user.designation !== user.officerType && (
+              <span> • {user.designation}</span>
+            )}
+            <span> • {user?.department || 'General Administration'}</span>
           </p>
         </div>
 

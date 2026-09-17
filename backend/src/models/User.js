@@ -39,16 +39,25 @@ const userSchema = new mongoose.Schema(
         'Water Supply & Sanitation',
         'Electricity & Power',
         'Waste Management',
+        'Drainage & Sewerage',
+        'Street Lighting',
+        'Public Safety',
+        'Environment',
         'Health & Environment',
         'Traffic & Transport',
         'None',
       ],
       default: 'None',
     },
+    officerType: {
+      type: String,
+      trim: true,
+      default: 'Field Officer',
+    },
     designation: {
       type: String,
       trim: true,
-      default: '',
+      default: 'Field Officer',
     },
     employeeId: {
       type: String,
@@ -78,14 +87,25 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    status: {
+      type: String,
+      enum: ['active', 'inactive'],
+      default: 'active',
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// Hash password before saving
+// Hash password before saving and synchronize status/isActive
 userSchema.pre('save', async function (next) {
+  if (this.isModified('status')) {
+    this.isActive = this.status === 'active';
+  } else if (this.isModified('isActive')) {
+    this.status = this.isActive ? 'active' : 'inactive';
+  }
+
   if (!this.isModified('password')) {
     return next();
   }
